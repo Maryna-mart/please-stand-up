@@ -1,4 +1,4 @@
-# AI-Powered Team Standup Timer
+# AI-Powered Standup Assistant
 
 ## Core Concept
 Web app for 7-10 person remote teams: synchronized timer + AI transcription (Whisper) + AI summary (Claude) via Portkey → email delivery.
