@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+# Check if .env file is being committed
+if git diff --cached --name-only | grep -q "^\.env$"; then
+  echo "❌ ERROR: Attempting to commit .env file!"
+  echo "The .env file contains sensitive API keys and should never be committed."
+  echo "Please remove it from staging: git reset HEAD .env"
+  exit 1
+fi
+
+# Run linting and formatting
+npm run lint:fix && npm run format

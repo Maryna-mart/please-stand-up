@@ -83,19 +83,27 @@ npm run build
 npm run preview
 ```
 
-### Pre-Push Checklist
+### Git Hooks (Automatic)
 
-Before pushing code, run:
+Git hooks are automatically configured via Husky:
 
-```bash
-npm run lint:fix && npm run format && npm run test
-```
+**Pre-commit** (runs before each commit):
+- Blocks `.env` file from being committed (security protection)
+- Auto-fixes linting issues
+- Auto-formats code with Prettier
 
-Or add as a git hook (see Setup Git Hooks section below).
+**Pre-push** (runs before each push):
+- Runs all tests to ensure code quality
 
 ## Environment Variables
 
-Required environment variables (add to `.env`):
+**For local development:**
+1. Copy the template: `cp .env.example .env`
+2. Get API keys from your team lead
+3. Fill in your local `.env` file with the provided keys
+4. **Never commit `.env` to git** (it's already in `.gitignore`)
+
+**Required variables:**
 
 ```bash
 # Pusher (real-time sync) - Get from https://pusher.com
@@ -114,21 +122,6 @@ SENDGRID_API_KEY=your_sendgrid_key
 SESSION_SECRET=your_random_32_char_secret
 ```
 
-## Setup Git Hooks (Optional)
-
-To automatically run linting and tests before pushing:
-
-```bash
-# Install husky
-npm install -D husky
-
-# Initialize git hooks
-npx husky init
-
-# Add pre-push hook
-echo "npm run lint:fix && npm run format && npm run test" > .husky/pre-push
-chmod +x .husky/pre-push
-```
 
 ## Project Structure
 
