@@ -11,6 +11,19 @@ export default [
   {
     files: ['**/*.vue'],
     languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        setTimeout: 'readonly',
+        clearInterval: 'readonly',
+        MediaRecorder: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly',
+        crypto: 'readonly',
+      },
       parserOptions: {
         parser: tseslint.parser,
         ecmaVersion: 'latest',
@@ -26,6 +39,19 @@ export default [
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        setTimeout: 'readonly',
+        clearInterval: 'readonly',
+        MediaRecorder: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly',
+        crypto: 'readonly',
+      },
       parser: tseslint.parser,
       parserOptions: {
         ecmaVersion: 'latest',

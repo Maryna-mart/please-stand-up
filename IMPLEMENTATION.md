@@ -3,14 +3,16 @@ i# AI-Powered Standup Assistant - Implementation Plan
 ## Progress Tracking
 - [x] Phase 1: Project Setup & Configuration ✅
 - [x] Phase 2: Core Session Management ✅
-- [ ] Phase 3: UI Components & Views
-- [ ] Phase 4: Real-time Synchronization
-- [ ] Phase 5: Audio Recording & Processing
-- [ ] Phase 6: AI Integration (Netlify Functions)
+- [x] Phase 3: UI Components & Views ✅
+- [ ] Phase 4: Code Quality Improvements & Basic Real-time Sync
+- [ ] Phase 5: AI Integration (Netlify Functions) - Transcription & Summarization
+- [ ] Phase 6: Complete Real-time Features (Transcript Sync)
 - [ ] Phase 7: Email Delivery
 - [ ] Phase 8: Security & Privacy Features
 - [ ] Phase 9: Testing & Quality Assurance
 - [ ] Phase 10: Deployment
+
+**Note**: Phase order optimized for logical dependency flow. Audio recording UI was completed in Phase 3.
 
 ---
 
@@ -167,99 +169,152 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 3: UI Components & Views
+## Phase 3: UI Components & Views ✅ COMPLETED
 
-### 3.1 Vue Router Setup
-- [ ] Create `src/router/index.ts`
-- [ ] Define routes:
-  - `/` → Home view (create/join)
-  - `/session/:id` → Session view
-  - `/404` → Not found
-- [ ] Add route guards for session validation
-- [ ] Write E2E tests:
-  - [ ] Navigation between routes
-  - [ ] Protected route access
+### 3.1 Vue Router Setup ✅
+- [x] Create `src/router/index.ts`
+- [x] Define routes:
+  - [x] `/` → Home view (create/join)
+  - [x] `/session/:id` → Session view
+  - [x] `/:pathMatch(.*)*` → Not found (404)
+- [x] Add route meta for page titles
+- [x] Update document title on route change
 
-### 3.2 Home View
-- [ ] Create `src/views/Home.vue`
-- [ ] Features:
-  - "Create Session" button
-  - "Join Session" form (session ID input)
-  - Optional password input
-  - Instructions/welcome text
-- [ ] Add form validation
-- [ ] Write component tests:
-  - [ ] Create session button works
-  - [ ] Join form validation
-  - [ ] Navigation on submit
+### 3.2 Home View ✅
+- [x] Create `src/views/Home.vue`
+- [x] Features:
+  - [x] "Create Session" form with leader name and optional password
+  - [x] "Join Session" form (session ID, participant name, optional password)
+  - [x] Form validation
+  - [x] Error handling display
+  - [x] Privacy notice with links to Portkey/OpenAI policies
+- [x] Responsive grid layout (2 columns on desktop, 1 on mobile)
+- [x] Loading states on both buttons
 
-### 3.3 Session View Layout
-- [ ] Create `src/views/Session.vue`
-- [ ] Layout sections:
-  - Session info header (ID, copy link button)
-  - Participants list
-  - Timer component area
-  - Audio controls area
-  - Transcripts display area
-  - Summary display area
-- [ ] Add responsive design (mobile-friendly)
-- [ ] Write component tests:
-  - [ ] Renders all sections
-  - [ ] Copy link functionality
-  - [ ] Responsive behavior
+### 3.3 Session View Layout ✅
+- [x] Create `src/views/Session.vue`
+- [x] Layout sections:
+  - [x] Session info header (ID, copy link button with confirmation)
+  - [x] 3-column responsive grid:
+    - Left: Timer + Audio Recorder
+    - Middle: Participants List
+    - Right: Transcripts + Summary (when available)
+- [x] Session controls (Generate Summary, Leave Session)
+- [x] Responsive design (stacks on mobile)
+- [x] Cleanup on unmount (leave session)
 
-### 3.4 Timer Component
-- [ ] Create `src/components/Timer.vue`
-- [ ] Features:
-  - Display countdown (default: 2 minutes per person)
-  - Start/Stop/Reset controls
-  - Visual progress indicator
-  - Sound notification on time end (optional)
-- [ ] Props: `duration`, `autoStart`
-- [ ] Emits: `timer-started`, `timer-stopped`, `timer-ended`
-- [ ] Write component tests:
-  - [ ] Timer countdown works
-  - [ ] Start/stop functionality
-  - [ ] Events emitted correctly
-  - [ ] Visual updates
+### 3.4 Timer Component ✅
+- [x] Create `src/components/Timer.vue`
+- [x] Features:
+  - [x] Display countdown (default: 120 seconds)
+  - [x] Start/Stop/Reset controls
+  - [x] Visual progress bar with percentage
+  - [x] Status display (Ready, Running, Paused)
+  - [x] Time formatting (M:SS)
+- [x] Props: `duration` (default: 120), `autoStart` (default: false)
+- [x] Emits: `timer-started`, `timer-stopped`, `timer-ended`
+- [x] Automatic cleanup on unmount
 
-### 3.5 Participants List Component
-- [ ] Create `src/components/ParticipantsList.vue`
-- [ ] Display:
-  - Participant name
-  - Status (recording, done, waiting)
-  - Transcript ready indicator
-- [ ] Write component tests:
-  - [ ] Renders participant list
-  - [ ] Status updates correctly
+### 3.5 Audio Recorder Component ✅
+- [x] Create `src/components/AudioRecorder.vue`
+- [x] Features:
+  - [x] Record/Stop buttons
+  - [x] Recording time counter
+  - [x] Microphone permission handling
+  - [x] Error messages for permission denial / no mic
+  - [x] Audio file size display
+  - [x] Playback preview with HTML5 audio element
+  - [x] Transcribe button (stub for Phase 6)
+  - [x] Discard button to clear recording
+- [x] Events: `transcript-ready` emission
+- [x] WebM/Opus codec preference (with fallback)
 
-### 3.6 Transcript View Component
-- [ ] Create `src/components/TranscriptView.vue`
-- [ ] Features:
-  - Display transcripts per participant
-  - Auto-scroll to latest
-  - Loading states
-  - Error handling display
-- [ ] Write component tests:
-  - [ ] Renders transcripts
-  - [ ] Loading states
-  - [ ] Error states
+### 3.6 Participants List Component ✅
+- [x] Create `src/components/ParticipantsList.vue`
+- [x] Features:
+  - [x] Display participant name, status, transcript indicator
+  - [x] Status badges: Recording (with pulse), Done, Waiting
+  - [x] Transcript ready indicator
+  - [x] Session stats (Total, Done count, Recording count)
+  - [x] Empty state message
+- [x] Props: `participants` array with id, name, status, transcriptReady
+- [x] Reactive stat calculations
 
-### 3.7 Summary View Component
-- [ ] Create `src/components/SummaryView.vue`
-- [ ] Features:
-  - Display formatted summary
-  - Copy to clipboard button
-  - Send email button
-  - Export options
-- [ ] Write component tests:
-  - [ ] Renders summary
-  - [ ] Copy functionality
-  - [ ] Email trigger
+### 3.7 Transcript View Component ✅
+- [x] Create `src/components/TranscriptView.vue`
+- [x] Features:
+  - [x] Display transcripts per participant
+  - [x] Copy to clipboard button with confirmation
+  - [x] Loading state with spinner
+  - [x] Error display
+  - [x] Duration formatting (Xm Ys)
+  - [x] Generic participant name fallback
+- [x] Props: `transcripts`, `isLoading`, `error`
+- [x] Empty state message
+
+### 3.8 Summary View Component ✅
+- [x] Create `src/components/SummaryView.vue`
+- [x] Features:
+  - [x] Display formatted summary in monospace
+  - [x] Email form with comma-separated email input
+  - [x] Email validation (at least one email required)
+  - [x] Pre-filled subject with today's date
+  - [x] Send via email button (stub for Phase 7)
+  - [x] Success/error message display
+  - [x] Copy summary to clipboard
+  - [x] Download as .txt file
+- [x] Props: `summary`, `sessionId`
+- [x] Form state management with loading/success/error states
 
 ---
 
-## Phase 4: Real-time Synchronization
+## Phase 4: Code Quality Improvements & Basic Real-time Sync
+
+### 4.0 Code Quality Improvements (Do First)
+**Note**: These refactoring tasks improve maintainability before adding real-time features.
+
+- [ ] **Extract shared type definitions**
+  - [ ] Create `src/types/participant.ts`:
+    ```typescript
+    export interface Participant {
+      id: string
+      name: string
+      status: 'waiting' | 'recording' | 'done'
+      transcriptReady?: boolean
+    }
+    ```
+  - [ ] Create `src/types/transcript.ts`:
+    ```typescript
+    export interface Transcript {
+      participantName?: string
+      text: string
+      duration?: number
+    }
+    ```
+  - [ ] Update imports in: Session.vue, ParticipantsList.vue, TranscriptView.vue
+
+- [ ] **Create constants file** `src/lib/constants.ts`:
+  ```typescript
+  export const TIMER_DEFAULT_DURATION = 120 // seconds
+  export const AUDIO_MIME_TYPE = 'audio/webm;codecs=opus'
+  export const MAX_AUDIO_SIZE = 25 * 1024 * 1024 // 25MB for Whisper
+  ```
+  - [ ] Update usage in: Timer.vue, AudioRecorder.vue
+
+- [ ] **Add window type declarations** `src/types/window.d.ts`:
+  ```typescript
+  declare global {
+    interface Window {
+      webkitAudioContext?: typeof AudioContext
+    }
+  }
+  export {}
+  ```
+  - [ ] Remove type assertion from AudioRecorder.vue
+
+- [ ] **Optional: Extract reusable composables** (if time permits)
+  - [ ] `src/composables/useClipboard.ts` - Copy-to-clipboard functionality
+  - [ ] `src/composables/useFileDownload.ts` - File download functionality
 
 ### 4.1 Pusher Integration Setup
 - [ ] Create `src/lib/pusher-client.ts`
@@ -284,90 +339,62 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Event handling
   - [ ] Cleanup on unmount
 
-### 4.3 Real-time State Sync
-- [ ] Integrate Pusher with session store
-- [ ] Broadcast local events to channel
+### 4.3 Real-time State Sync (Basic Features Only)
+- [ ] Integrate Pusher with session store (useSession)
+- [ ] Broadcast local events to channel:
+  - [ ] `timer-started` / `timer-stopped` events
+  - [ ] `user-joined` / `user-left` events
+  - [ ] Participant status updates (`waiting`, `recording`, `done`)
 - [ ] Update local state from remote events
-- [ ] Handle race conditions
+- [ ] Handle race conditions (optimistic UI updates)
 - [ ] Write integration tests:
   - [ ] Timer sync across clients
-  - [ ] Participant updates sync
-  - [ ] Transcript sync
+  - [ ] Participant join/leave sync
+  - [ ] Participant status updates
+
+**Note**: Transcript sync (`transcript-ready` event) will be implemented in Phase 6 after AI integration is complete, ensuring we can test with real transcription data.
 
 ---
 
-## Phase 5: Audio Recording & Processing
+## Phase 5: AI Integration (Netlify Functions)
 
-### 5.1 Audio Recorder Composable
-- [ ] Create `src/composables/useAudioRecorder.ts`
-- [ ] Features:
-  - Start/stop recording using MediaRecorder API
-  - Request microphone permissions
-  - Handle different audio formats (prefer webm/opus)
-  - Convert to format accepted by Whisper API
-  - Error handling (no mic, permission denied)
-- [ ] Write unit tests (with mocked MediaRecorder):
-  - [ ] Start/stop recording
-  - [ ] Permission handling
-  - [ ] Error scenarios
+**Status**: AudioRecorder UI component completed in Phase 3. This phase focuses on connecting it to AI services.
 
-### 5.2 Audio Utilities
-- [ ] Create `src/lib/audio-utils.ts`
-- [ ] Functions:
-  - `convertAudioBlob(blob: Blob): Promise<Blob>` (if format conversion needed)
-  - `validateAudioSize(blob: Blob): boolean` (max 25MB for Whisper)
-  - `getAudioDuration(blob: Blob): Promise<number>`
-- [ ] Write unit tests:
-  - [ ] Size validation
-  - [ ] Format handling
-
-### 5.3 Audio Recorder Component
-- [ ] Create `src/components/AudioRecorder.vue`
-- [ ] UI:
-  - Record/Stop button
-  - Recording indicator (red dot)
-  - Audio duration display
-  - Playback preview (optional)
-  - Upload/Transcribe button
-- [ ] Integrate with useAudioRecorder composable
-- [ ] Write component tests:
-  - [ ] Record button behavior
-  - [ ] State changes
-  - [ ] Upload trigger
-
----
-
-## Phase 6: AI Integration (Netlify Functions)
-
-### 6.1 Portkey Client Setup
-- [ ] Create `src/lib/portkey.ts` (for type definitions)
+### 5.1 Portkey Client Setup
 - [ ] Create `netlify/functions/lib/portkey-server.ts`
-- [ ] Initialize Portkey client with API key
-- [ ] Add error handling and retry logic
+  - [ ] Initialize Portkey client with API key from env
+  - [ ] Configure for Whisper (transcription) and Claude (summarization)
+  - [ ] Add error handling and retry logic
+  - [ ] Add request/response logging
+- [ ] Create `src/lib/portkey-types.ts` (frontend type definitions)
 - [ ] Write unit tests:
   - [ ] Client initialization
   - [ ] Error handling
+  - [ ] Retry logic
 
-### 6.2 Transcribe Function
+### 5.2 Transcription Function (Netlify)
 - [ ] Create `netlify/functions/transcribe.ts`
-- [ ] Accept audio file via multipart/form-data
+- [ ] Accept multipart/form-data with audio file
+- [ ] Validate audio file:
+  - [ ] Max size 25MB (Whisper limit)
+  - [ ] Supported formats: webm, mp3, mp4, wav
 - [ ] Call Portkey Whisper API:
-  - Model: `whisper-1`
-  - Language: auto-detect (or explicit de/en)
-- [ ] Return transcript text
+  - [ ] Model: `whisper-1`
+  - [ ] Language: auto-detect (or explicit de/en)
+  - [ ] Return transcript text with detected language
 - [ ] Error handling:
-  - Invalid audio format
-  - File too large
-  - API errors
+  - [ ] Invalid audio format → 400 Bad Request
+  - [ ] File too large → 413 Payload Too Large
+  - [ ] Portkey API errors → 502 Bad Gateway
 - [ ] Write integration tests:
-  - [ ] Successful transcription
-  - [ ] Error handling
-  - [ ] Language detection
+  - [ ] Successful transcription (mock Portkey response)
+  - [ ] Language detection (German vs English)
+  - [ ] Error scenarios
 
-### 6.3 Summarize Function
+### 5.3 Summarization Function (Netlify)
 - [ ] Create `netlify/functions/summarize.ts`
-- [ ] Accept array of transcripts with participant names
-- [ ] Detect language from transcripts
+- [ ] Accept JSON: `{ sessionId, transcripts: Array<{name, text}> }`
+- [ ] Detect language from transcripts (majority vote)
 - [ ] Call Portkey Claude API with prompt:
   ```
   You are analyzing a team standup transcript. Respond in the same language as the transcripts.
@@ -384,23 +411,85 @@ i# AI-Powered Standup Assistant - Implementation Plan
   Transcripts:
   [Insert all transcripts]
   ```
-- [ ] Return formatted summary
+- [ ] Return formatted summary (same language as input)
+- [ ] Error handling:
+  - [ ] Empty transcripts → 400 Bad Request
+  - [ ] Portkey API errors → 502 Bad Gateway
 - [ ] Write integration tests:
   - [ ] Successful summarization
   - [ ] Language matching (German in → German out)
-  - [ ] Error handling
+  - [ ] Multiple participants
+  - [ ] Error scenarios
 
-### 6.4 API Integration in Frontend
+### 5.4 Frontend API Integration
 - [ ] Create `src/lib/api-client.ts`
 - [ ] Functions:
-  - `uploadAudio(sessionId: string, participantId: string, audioBlob: Blob)`
-  - `generateSummary(sessionId: string, transcripts: Transcript[])`
-- [ ] Add loading states
+  - [ ] `uploadAudio(sessionId: string, participantId: string, audioBlob: Blob): Promise<{transcript: string, language: string}>`
+  - [ ] `generateSummary(sessionId: string, transcripts: Array<{name: string, text: string}>): Promise<string>`
+- [ ] Add loading states and progress tracking
 - [ ] Error handling with user-friendly messages
 - [ ] Write unit tests:
-  - [ ] API calls formation
+  - [ ] API call formation
   - [ ] Error handling
   - [ ] Response parsing
+
+### 5.5 Connect AudioRecorder to Transcription
+- [ ] Update `src/components/AudioRecorder.vue`:
+  - [ ] Replace mock `uploadAudio()` with real API call
+  - [ ] Show upload progress
+  - [ ] Display transcript when ready
+  - [ ] Handle transcription errors with retry option
+- [ ] Update `src/views/Session.vue`:
+  - [ ] Store transcripts in state
+  - [ ] Pass transcripts to TranscriptView component
+  - [ ] Enable "Generate Summary" button when transcripts exist
+
+### 5.6 Connect Summary to AI
+- [ ] Update `src/views/Session.vue`:
+  - [ ] Replace mock `generateSummary()` with real API call
+  - [ ] Show generation progress
+  - [ ] Display summary when ready
+  - [ ] Handle summarization errors
+
+---
+
+## Phase 6: Complete Real-time Features (Transcript Sync)
+
+**Prerequisites**: Phase 4 (basic Pusher setup) and Phase 5 (AI transcription) must be complete.
+
+### 6.1 Add Transcript Events to Pusher
+- [ ] Update `src/composables/usePusher.ts`:
+  - [ ] Add `transcript-ready` event listener
+  - [ ] Add `summary-generated` event listener
+- [ ] Update `src/composables/useSession.ts`:
+  - [ ] Add transcript storage to session state
+  - [ ] Add summary storage to session state
+
+### 6.2 Broadcast Transcript Events
+- [ ] Update `src/components/AudioRecorder.vue`:
+  - [ ] After successful transcription, broadcast `transcript-ready` event via Pusher
+  - [ ] Include: participantId, participantName, transcript text, duration
+- [ ] Update `src/views/Session.vue`:
+  - [ ] After generating summary, broadcast `summary-generated` event
+  - [ ] Include: summary text, generated timestamp
+
+### 6.3 Sync Transcripts Across Clients
+- [ ] Listen for `transcript-ready` events from other participants
+- [ ] Update local transcript list when remote transcript arrives
+- [ ] Update participant status to "done" when transcript ready
+- [ ] Show visual notification when new transcript arrives
+
+### 6.4 Sync Summary Across Clients
+- [ ] Listen for `summary-generated` event
+- [ ] Display summary when it arrives (even if not the generator)
+- [ ] Show visual notification when summary is ready
+
+### 6.5 Integration Tests
+- [ ] Write multi-client tests:
+  - [ ] Participant A records → Participant B sees transcript
+  - [ ] Leader generates summary → All participants see it
+  - [ ] Late joiner sees existing transcripts
+  - [ ] Handle network disconnection/reconnection
 
 ---
 
@@ -712,6 +801,19 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ## Changelog
 
-### 2026-01-20
+### 2026-01-20 (continued)
+- ✅ Phase 3 completed: Full UI layer with 8 components + 2 views
+  - Vue Router with 3 routes and title management
+  - Home.vue: Create/join session interface with privacy notice
+  - Session.vue: Main standup room with responsive 3-column layout
+  - Timer.vue: Countdown with progress bar (default 2 min/person)
+  - AudioRecorder.vue: Record, playback, file size display (WebM/Opus)
+  - ParticipantsList.vue: Status tracking with stats (Total, Done, Recording)
+  - TranscriptView.vue: Transcript display with copy/clipboard
+  - SummaryView.vue: Summary display + email form + download as .txt
+  - Crypto polyfill added for Vite Vue plugin in test environment
+  - 54 existing tests remain passing
+
+### 2026-01-20 (earlier)
 - ✅ Phase 2 completed: Core session management (56 tests, 93.93% coverage)
 - ✅ Phase 1 completed: Project setup with Vue 3, TypeScript, Tailwind CSS v4, testing infrastructure

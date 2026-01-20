@@ -1,10 +1,7 @@
 import { beforeEach } from 'vitest'
-import { webcrypto } from 'node:crypto'
 
-// Polyfill Web Crypto API for tests (happy-dom doesn't include it)
-if (!globalThis.crypto) {
-  globalThis.crypto = webcrypto as Crypto
-}
+// Note: crypto.hash polyfill is applied globally in vitest.config.ts
+// before any plugins run. No need to duplicate here.
 
 // Global test setup
 beforeEach(() => {
