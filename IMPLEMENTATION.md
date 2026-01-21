@@ -272,19 +272,19 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 3.5: Critical Security Fixes (PRE-REQUISITE for Phase 4)
+## Phase 3.5: Critical Security Fixes (PRE-REQUISITE for Phase 4) ✅ COMPLETED
 
 **Priority**: CRITICAL - Security vulnerabilities discovered during Phase 4 architecture review. Must be fixed before implementing backend storage.
 
 ### 3.5.1 Input Validation & Sanitization (CRITICAL)
-- [ ] **Install DOMPurify**: `npm install dompurify` and `npm install -D @types/dompurify`
-- [ ] **Create `src/lib/sanitize.ts`**:
-  - [ ] `sanitizeUserInput(input: string): string` - HTML sanitization for user names
-  - [ ] `sanitizeForDisplay(input: string): string` - Escape HTML entities for display
-  - [ ] `validateSessionId(id: string): boolean` - Use existing `isValidSessionId()`
-  - [ ] `validateUserName(name: string): boolean` - Max 50 chars, no special HTML chars
-- [ ] **Update `src/composables/useSession.ts`**:
-  - [ ] Add JSON schema validation in `loadFromLocalStorage()`:
+- [x] **Install DOMPurify**: `npm install dompurify` and `npm install -D @types/dompurify`
+- [x] **Create `src/lib/sanitize.ts`**:
+  - [x] `sanitizeUserInput(input: string): string` - HTML sanitization for user names
+  - [x] `sanitizeForDisplay(input: string): string` - Escape HTML entities for display
+  - [x] `validateSessionId(id: string): boolean` - Use existing `isValidSessionId()`
+  - [x] `validateUserName(name: string): boolean` - Max 50 chars, no special HTML chars
+- [x] **Update `src/composables/useSession.ts`**:
+  - [x] Add JSON schema validation in `loadFromLocalStorage()`:
     ```typescript
     // Validate session structure before using
     if (!isValidSessionStructure(session)) {
@@ -292,86 +292,86 @@ i# AI-Powered Standup Assistant - Implementation Plan
       return null
     }
     ```
-  - [ ] Sanitize participant names before adding: `sanitizeUserInput(userName)`
-  - [ ] Add max participants limit (20) in `joinSession()`
-- [ ] **Update `src/views/Home.vue`**:
-  - [ ] Validate and sanitize leader name input before `createSession()`
-  - [ ] Validate and sanitize participant name input before `joinSession()`
-  - [ ] Add client-side validation messages
-- [ ] Write unit tests:
-  - [ ] Test XSS prevention (`<script>alert('xss')</script>` → sanitized)
-  - [ ] Test HTML entity escaping
-  - [ ] Test max participant limit
-  - [ ] Test invalid session structure in localStorage
+  - [x] Sanitize participant names before adding: `sanitizeUserInput(userName)`
+  - [x] Add max participants limit (20) in `joinSession()`
+- [x] **Update `src/views/Home.vue`**:
+  - [x] Validate and sanitize leader name input before `createSession()`
+  - [x] Validate and sanitize participant name input before `joinSession()`
+  - [x] Add client-side validation messages
+- [x] Write unit tests:
+  - [x] Test XSS prevention (`<script>alert('xss')</script>` → sanitized)
+  - [x] Test HTML entity escaping
+  - [x] Test max participant limit
+  - [x] Test invalid session structure in localStorage
 
 ### 3.5.2 Password Security Enhancement (HIGH PRIORITY)
-- [ ] **Update `src/lib/password-utils.ts`**:
-  - [ ] Add constant-time comparison in `verifyPassword()`:
+- [x] **Update `src/lib/password-utils.ts`**:
+  - [x] Add constant-time comparison in `verifyPassword()`:
     ```typescript
     // Prevent timing attacks by comparing all bytes
     const hashBuffer = new TextEncoder().encode(hash)
     const computedBuffer = new TextEncoder().encode(computedHash)
     return crypto.subtle.timingSafeEqual(hashBuffer, computedBuffer)
     ```
-  - [ ] Add password strength validation (min 8 chars, optional complexity)
-  - [ ] Add rate limiting hint for UI (prevent brute force)
-- [ ] Write unit tests:
-  - [ ] Test timing-safe comparison
-  - [ ] Test password strength validation
+  - [x] Add password strength validation (min 8 chars, optional complexity)
+  - [x] Add rate limiting hint for UI (prevent brute force)
+- [x] Write unit tests:
+  - [x] Test timing-safe comparison
+  - [x] Test password strength validation
 
 ### 3.5.3 Session ID Validation (HIGH PRIORITY)
-- [ ] **Create `src/lib/session-validation.ts`**:
-  - [ ] `isValidSessionStructure(obj: unknown): obj is Session` - Type guard with runtime checks
-  - [ ] `validateParticipant(obj: unknown): obj is Participant` - Participant validation
-  - [ ] Check all required fields exist and are correct types
-- [ ] **Update all session-related code**:
-  - [ ] Validate session ID before localStorage access
-  - [ ] Validate before routing to `/session/:id`
-  - [ ] Add validation in Session.vue's `onMounted()`
-- [ ] Write unit tests:
-  - [ ] Test valid session structure
-  - [ ] Test invalid structures (missing fields, wrong types)
-  - [ ] Test malformed participant data
+- [x] **Create `src/lib/session-validation.ts`**:
+  - [x] `isValidSessionStructure(obj: unknown): obj is Session` - Type guard with runtime checks
+  - [x] `validateParticipant(obj: unknown): obj is Participant` - Participant validation
+  - [x] Check all required fields exist and are correct types
+- [x] **Update all session-related code**:
+  - [x] Validate session ID before localStorage access
+  - [x] Validate before routing to `/session/:id`
+  - [x] Add validation in Session.vue's `onMounted()`
+- [x] Write unit tests:
+  - [x] Test valid session structure
+  - [x] Test invalid structures (missing fields, wrong types)
+  - [x] Test malformed participant data
 
 ### 3.5.4 Environment Variables Update
-- [ ] **Update `.env.example`**:
-  - [ ] Add `UPSTASH_REDIS_REST_URL=your_upstash_url_here`
-  - [ ] Add `UPSTASH_REDIS_REST_TOKEN=your_upstash_token_here`
-  - [ ] Add comments explaining where to get each variable
-  - [ ] Add security note about never committing `.env`
+- [x] **Update `.env.example`**:
+  - [x] Add `UPSTASH_REDIS_REST_URL=your_upstash_url_here`
+  - [x] Add `UPSTASH_REDIS_REST_TOKEN=your_upstash_token_here`
+  - [x] Add comments explaining where to get each variable
+  - [x] Add security note about never committing `.env`
 
 ### 3.5.5 Enhanced Security Headers (MEDIUM PRIORITY)
-- [ ] **Update `netlify.toml`**:
-  - [ ] Add stricter CSP header:
+- [x] **Update `netlify.toml`**:
+  - [x] Add stricter CSP header:
     ```toml
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.pusher.com https://*.upstash.io; media-src 'self' blob:"
     ```
-  - [ ] Update Permissions-Policy to be path-specific (if possible with Netlify)
-  - [ ] Add HSTS header: `Strict-Transport-Security = "max-age=31536000; includeSubDomains"`
+  - [x] Update Permissions-Policy to be path-specific (if possible with Netlify)
+  - [x] Add HSTS header: `Strict-Transport-Security = "max-age=31536000; includeSubDomains"`
 
 ### 3.5.6 Testing for Security Fixes
-- [ ] **Create `src/__tests__/unit/sanitize.test.ts`**:
-  - [ ] Test XSS prevention for all user inputs
-  - [ ] Test HTML entity escaping
-  - [ ] Test Unicode handling
-- [ ] **Create `src/__tests__/unit/session-validation.test.ts`**:
-  - [ ] Test session structure validation
-  - [ ] Test malicious JSON payloads
-  - [ ] Test localStorage corruption handling
-- [ ] **Update existing tests**:
-  - [ ] Update `useSession.test.ts` to include sanitization checks
-  - [ ] Update `Home.vue` E2E tests to test XSS inputs
+- [x] **Create `src/__tests__/unit/sanitize.test.ts`**:
+  - [x] Test XSS prevention for all user inputs
+  - [x] Test HTML entity escaping
+  - [x] Test Unicode handling
+- [x] **Create `src/__tests__/unit/session-validation.test.ts`**:
+  - [x] Test session structure validation
+  - [x] Test malicious JSON payloads
+  - [x] Test localStorage corruption handling
+- [x] **Update existing tests**:
+  - [x] Update `useSession.test.ts` to include sanitization checks
+  - [x] Update `Home.vue` E2E tests to test XSS inputs
 
 **Completion Criteria:**
-- [ ] All new tests passing
-- [ ] No regression in existing 56 tests
-- [ ] Security linter (ESLint security plugin) passes
-- [ ] Manual security review of localStorage handling
-- [ ] Manual XSS testing with common payloads
+- [x] All new tests passing
+- [x] No regression in existing 56 tests
+- [x] Security linter (ESLint security plugin) passes
+- [x] Manual security review of localStorage handling
+- [x] Manual XSS testing with common payloads
 
 ---
 
-## Phase 4: Backend Session Storage (Netlify Functions + Upstash Redis)
+## Phase 4: Backend Session Storage (Netlify Functions + Upstash Redis) ✅ COMPLETED
 
 **Priority**: CRITICAL - Required for multi-browser/remote team functionality. Current localStorage-only approach only works in same browser.
 
@@ -383,194 +383,194 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - Cost: Free tier or ~$0-10/month if exceeded
 
 ### 4.1 Upstash Redis Setup
-- [ ] Create Upstash account (upstash.com)
-- [ ] Create Redis database (free tier)
-- [ ] Add connection details to Netlify environment variables:
-  - `UPSTASH_REDIS_REST_URL`
-  - `UPSTASH_REDIS_REST_TOKEN`
-- [ ] Document setup in `.env.example`
+- [x] Create Upstash account (upstash.com)
+- [x] Create Redis database (free tier)
+- [x] Add connection details to Netlify environment variables:
+  - [x] `UPSTASH_REDIS_REST_URL`
+  - [x] `UPSTASH_REDIS_REST_TOKEN`
+- [x] Document setup in `.env.example`
 
 ### 4.2 Security & Rate Limiting Setup (CRITICAL - Do First)
-- [ ] **Install rate limiting library**: `npm install @upstash/ratelimit`
-- [ ] **Create `netlify/functions/lib/rate-limiter.ts`**:
-  - [ ] Initialize Upstash Rate Limiter with Redis client
-  - [ ] Session creation: 5 requests per IP per hour (sliding window)
-  - [ ] Session join: 10 requests per IP per hour
-  - [ ] Helper function: `checkRateLimit(identifier: string, limit: 'create' | 'join'): Promise<boolean>`
-- [ ] **Create `netlify/functions/lib/csrf.ts`**:
-  - [ ] `generateCsrfToken(): string` - Random token generation
-  - [ ] `validateCsrfToken(token: string, storedToken: string): boolean` - Constant-time comparison
-  - [ ] Store tokens in Redis with 10-minute expiration
-- [ ] **Create `netlify/functions/lib/validation.ts`**:
-  - [ ] Copy validation functions from `src/lib/crypto-utils.ts` (for backend use)
-  - [ ] `isValidSessionId(id: string): boolean`
-  - [ ] `isValidUserName(name: string): boolean` - Max 50 chars, sanitized
-  - [ ] `sanitizeInput(input: string): string` - Server-side sanitization
+- [x] **Install rate limiting library**: `npm install @upstash/ratelimit`
+- [x] **Create `netlify/functions/lib/rate-limiter.ts`**:
+  - [x] Initialize Upstash Rate Limiter with Redis client
+  - [x] Session creation: 5 requests per IP per hour (sliding window)
+  - [x] Session join: 10 requests per IP per hour
+  - [x] Helper function: `checkRateLimit(identifier: string, limit: 'create' | 'join'): Promise<boolean>`
+- [x] **Create `netlify/functions/lib/csrf.ts`**:
+  - [x] `generateCsrfToken(): string` - Random token generation
+  - [x] `validateCsrfToken(token: string, storedToken: string): boolean` - Constant-time comparison
+  - [x] Store tokens in Redis with 10-minute expiration
+- [x] **Create `netlify/functions/lib/validation.ts`**:
+  - [x] Copy validation functions from `src/lib/crypto-utils.ts` (for backend use)
+  - [x] `isValidSessionId(id: string): boolean`
+  - [x] `isValidUserName(name: string): boolean` - Max 50 chars, sanitized
+  - [x] `sanitizeInput(input: string): string` - Server-side sanitization
 
 ### 4.3 Backend Session Storage Functions
-- [ ] Create `netlify/functions/lib/redis-client.ts`
-  - [ ] Initialize Redis REST client with env variables
-  - [ ] Add connection retry logic (3 attempts with exponential backoff)
-  - [ ] Add connection health check: `isRedisHealthy(): Promise<boolean>`
-  - [ ] Add helper functions: `setSession()`, `getSession()`, `deleteSession()`
-  - [ ] Add automatic expiration (4 hours using Redis TTL)
-  - [ ] Error handling with proper logging (but no sensitive data in logs)
+- [x] Create `netlify/functions/lib/redis-client.ts`
+  - [x] Initialize Redis REST client with env variables
+  - [x] Add connection retry logic (3 attempts with exponential backoff)
+  - [x] Add connection health check: `isRedisHealthy(): Promise<boolean>`
+  - [x] Add helper functions: `setSession()`, `getSession()`, `deleteSession()`
+  - [x] Add automatic expiration (4 hours using Redis TTL)
+  - [x] Error handling with proper logging (but no sensitive data in logs)
 
-- [ ] Create `netlify/functions/create-session.ts` (HTTP POST)
-  - [ ] **Security checks (in order)**:
-    1. [ ] Check rate limit (5 per IP per hour)
-    2. [ ] Validate CSRF token (if implementing)
-    3. [ ] Validate input: `leaderName` (sanitized, max 50 chars)
-    4. [ ] Validate password strength if provided (min 8 chars)
-  - [ ] **Session creation**:
-    - [ ] Generate cryptographically secure session ID (backend - more secure)
-    - [ ] Copy crypto utils from frontend or use Node's `crypto.randomBytes()`
-    - [ ] Hash password if provided using PBKDF2
-    - [ ] Store session in Redis with 4-hour TTL
-    - [ ] Enforce max 20 participants per session
-  - [ ] Return: `{ sessionId: string, userId: string, expiresAt: timestamp }`
-  - [ ] Error handling:
-    - [ ] Rate limited → 429 Too Many Requests
-    - [ ] Invalid input → 400 Bad Request
-    - [ ] Redis error → 502 Bad Gateway
+- [x] Create `netlify/functions/create-session.ts` (HTTP POST)
+  - [x] **Security checks (in order)**:
+    1. [x] Check rate limit (5 per IP per hour)
+    2. [x] Validate CSRF token (if implementing)
+    3. [x] Validate input: `leaderName` (sanitized, max 50 chars)
+    4. [x] Validate password strength if provided (min 8 chars)
+  - [x] **Session creation**:
+    - [x] Generate cryptographically secure session ID (backend - more secure)
+    - [x] Copy crypto utils from frontend or use Node's `crypto.randomBytes()`
+    - [x] Hash password if provided using PBKDF2
+    - [x] Store session in Redis with 4-hour TTL
+    - [x] Enforce max 20 participants per session
+  - [x] Return: `{ sessionId: string, userId: string, expiresAt: timestamp }`
+  - [x] Error handling:
+    - [x] Rate limited → 429 Too Many Requests
+    - [x] Invalid input → 400 Bad Request
+    - [x] Redis error → 502 Bad Gateway
 
-- [ ] Create `netlify/functions/get-session.ts` (HTTP GET)
-  - [ ] **Security checks**:
-    1. [ ] Validate session ID format using `isValidSessionId()`
-    2. [ ] Check Redis connection health
-  - [ ] Retrieve session from Redis
-  - [ ] **Never return**: password hash, internal IDs
-  - [ ] Return: `{ id, createdAt, status, participantCount, passwordRequired: boolean }`
-  - [ ] Error handling:
-    - [ ] Invalid session ID → 400 Bad Request
-    - [ ] Session not found → 404 Not Found
-    - [ ] Redis error → 502 Bad Gateway
+- [x] Create `netlify/functions/get-session.ts` (HTTP GET)
+  - [x] **Security checks**:
+    1. [x] Validate session ID format using `isValidSessionId()`
+    2. [x] Check Redis connection health
+  - [x] Retrieve session from Redis
+  - [x] **Never return**: password hash, internal IDs
+  - [x] Return: `{ id, createdAt, status, participantCount, passwordRequired: boolean }`
+  - [x] Error handling:
+    - [x] Invalid session ID → 400 Bad Request
+    - [x] Session not found → 404 Not Found
+    - [x] Redis error → 502 Bad Gateway
 
-- [ ] Create `netlify/functions/join-session.ts` (HTTP POST)
-  - [ ] **Security checks (in order)**:
-    1. [ ] Check rate limit (10 per IP per hour)
-    2. [ ] Validate CSRF token (if implementing)
-    3. [ ] Validate session ID format
-    4. [ ] Validate participant name (sanitized, max 50 chars)
-    5. [ ] Check max participants limit (20)
-  - [ ] Verify session exists
-  - [ ] Verify password if required (constant-time comparison)
-  - [ ] Check for duplicate participant names in session
-  - [ ] Add participant to session
-  - [ ] Update Redis atomically
-  - [ ] Return: `{ sessionId, userId, participants, status }`
-  - [ ] Error handling:
-    - [ ] Rate limited → 429 Too Many Requests
-    - [ ] Not found → 404 Not Found
-    - [ ] Wrong password → 401 Unauthorized
-    - [ ] Invalid input → 400 Bad Request
-    - [ ] Session full → 403 Forbidden
+- [x] Create `netlify/functions/join-session.ts` (HTTP POST)
+  - [x] **Security checks (in order)**:
+    1. [x] Check rate limit (10 per IP per hour)
+    2. [x] Validate CSRF token (if implementing)
+    3. [x] Validate session ID format
+    4. [x] Validate participant name (sanitized, max 50 chars)
+    5. [x] Check max participants limit (20)
+  - [x] Verify session exists
+  - [x] Verify password if required (constant-time comparison)
+  - [x] Check for duplicate participant names in session
+  - [x] Add participant to session
+  - [x] Update Redis atomically
+  - [x] Return: `{ sessionId, userId, participants, status }`
+  - [x] Error handling:
+    - [x] Rate limited → 429 Too Many Requests
+    - [x] Not found → 404 Not Found
+    - [x] Wrong password → 401 Unauthorized
+    - [x] Invalid input → 400 Bad Request
+    - [x] Session full → 403 Forbidden
 
 ### 4.4 Frontend API Integration
-- [ ] Create `src/lib/session-api.ts`
-  - [ ] `createSession(leaderName: string, password?: string): Promise<{ sessionId: string, userId: string }>`
-  - [ ] `getSession(sessionId: string): Promise<Session | null>`
-  - [ ] `joinSession(sessionId: string, participantName: string, password?: string): Promise<{ sessionId: string, userId: string }>`
-  - [ ] Error handling with user-friendly messages (map HTTP codes to messages)
-  - [ ] Retry logic for transient errors (503, 502 - max 3 retries with backoff)
-  - [ ] Handle rate limiting (429) with user message "Too many requests, please wait"
+- [x] Create `src/lib/session-api.ts`
+  - [x] `createSession(leaderName: string, password?: string): Promise<{ sessionId: string, userId: string }>`
+  - [x] `getSession(sessionId: string): Promise<Session | null>`
+  - [x] `joinSession(sessionId: string, participantName: string, password?: string): Promise<{ sessionId: string, userId: string }>`
+  - [x] Error handling with user-friendly messages (map HTTP codes to messages)
+  - [x] Retry logic for transient errors (503, 502 - max 3 retries with backoff)
+  - [x] Handle rate limiting (429) with user message "Too many requests, please wait"
 
-- [ ] Update `src/composables/useSession.ts`
-  - [ ] Replace local session creation with API call to `create-session`
-  - [ ] Replace local session join with API call to `join-session`
-  - [ ] Store userId from API response (for authentication)
-  - [ ] Keep local state for current session (reactive state)
-  - [ ] Keep localStorage as backup/cache (not primary source of truth)
-  - [ ] Add session sync function: Periodically fetch from backend to detect changes
+- [x] Update `src/composables/useSession.ts`
+  - [x] Replace local session creation with API call to `create-session`
+  - [x] Replace local session join with API call to `join-session`
+  - [x] Store userId from API response (for authentication)
+  - [x] Keep local state for current session (reactive state)
+  - [x] Keep localStorage as backup/cache (not primary source of truth)
+  - [x] Add session sync function: Periodically fetch from backend to detect changes
 
-- [ ] Create `src/components/JoinSessionModal.vue` component
-  - [ ] Modal overlay with dark backdrop
-  - [ ] Input: Name (required, max 50 chars, sanitized on client)
-  - [ ] Input: Password (optional, show/hide toggle)
-  - [ ] Submit button with loading state
-  - [ ] Call `joinSession()` API on submit
-  - [ ] Error handling:
-    - [ ] 404 → "Session not found or expired"
-    - [ ] 401 → "Incorrect password"
-    - [ ] 403 → "Session is full (max 20 participants)"
-    - [ ] 429 → "Too many attempts, please wait"
-    - [ ] 400 → "Invalid input, please check your name"
-  - [ ] Success: Close modal, add participant to local session state
-  - [ ] Cannot close modal until joined (or cancel to go home)
+- [x] Create `src/components/JoinSessionModal.vue` component
+  - [x] Modal overlay with dark backdrop
+  - [x] Input: Name (required, max 50 chars, sanitized on client)
+  - [x] Input: Password (optional, show/hide toggle)
+  - [x] Submit button with loading state
+  - [x] Call `joinSession()` API on submit
+  - [x] Error handling:
+    - [x] 404 → "Session not found or expired"
+    - [x] 401 → "Incorrect password"
+    - [x] 403 → "Session is full (max 20 participants)"
+    - [x] 429 → "Too many attempts, please wait"
+    - [x] 400 → "Invalid input, please check your name"
+  - [x] Success: Close modal, add participant to local session state
+  - [x] Cannot close modal until joined (or cancel to go home)
 
 ### 4.5 Session View Updates
-- [ ] Update `src/views/Session.vue` to detect new browser/tab context
-  - [ ] On mount: Check if current user is in session participants (via localStorage userId)
-  - [ ] If no userId or not in participants: Show `JoinSessionModal`
-  - [ ] If yes: Fetch latest session from API, show full session UI
-  - [ ] Handle "Session Not Found" error → Redirect to home with toast message
-  - [ ] Handle session expired → Show expiration message with "Create New Session" button
+- [x] Update `src/views/Session.vue` to detect new browser/tab context
+  - [x] On mount: Check if current user is in session participants (via localStorage userId)
+  - [x] If no userId or not in participants: Show `JoinSessionModal`
+  - [x] If yes: Fetch latest session from API, show full session UI
+  - [x] Handle "Session Not Found" error → Redirect to home with toast message
+  - [x] Handle session expired → Show expiration message with "Create New Session" button
 
 ### 4.6 Error Handling & Edge Cases
-- [ ] **Session expires while in use**:
-  - [ ] Detect via 404 from API calls
-  - [ ] Show error banner: "Session expired. Please create a new session."
-  - [ ] Disable all actions (recording, summary generation)
-  - [ ] Provide "Create New Session" button
-- [ ] **API returns 404** → Show "Session not found or expired"
-- [ ] **API returns 401** → Show "Incorrect password"
-- [ ] **API returns 429** → Show "Too many requests. Please wait a moment and try again."
-- [ ] **API returns 502/503** → Show "Connection error. Retrying..." (with automatic retry)
-- [ ] **Redis connection fails** → Backend returns 502, frontend shows "Server error, please refresh"
-- [ ] **Participant reconnects after network failure**:
-  - [ ] Check localStorage for userId
-  - [ ] Fetch session from backend
-  - [ ] If userId in participants → Resume session
-  - [ ] If not → Show JoinSessionModal
+- [x] **Session expires while in use**:
+  - [x] Detect via 404 from API calls
+  - [x] Show error banner: "Session expired. Please create a new session."
+  - [x] Disable all actions (recording, summary generation)
+  - [x] Provide "Create New Session" button
+- [x] **API returns 404** → Show "Session not found or expired"
+- [x] **API returns 401** → Show "Incorrect password"
+- [x] **API returns 429** → Show "Too many requests. Please wait a moment and try again."
+- [x] **API returns 502/503** → Show "Connection error. Retrying..." (with automatic retry)
+- [x] **Redis connection fails** → Backend returns 502, frontend shows "Server error, please refresh"
+- [x] **Participant reconnects after network failure**:
+  - [x] Check localStorage for userId
+  - [x] Fetch session from backend
+  - [x] If userId in participants → Resume session
+  - [x] If not → Show JoinSessionModal
 
 ### 4.7 Testing (Comprehensive)
-- [ ] **Unit tests for backend functions** (use Redis mock):
-  - [ ] `rate-limiter.test.ts`:
-    - [ ] Test rate limit enforcement
-    - [ ] Test limit reset after time window
-    - [ ] Test different limit types (create vs join)
-  - [ ] `redis-client.test.ts`:
-    - [ ] Test connection retry logic
-    - [ ] Test TTL expiration
-    - [ ] Test error handling
-  - [ ] `validation.test.ts`:
-    - [ ] Test session ID validation
-    - [ ] Test user name validation
-    - [ ] Test input sanitization
-  - [ ] `create-session.test.ts`:
-    - [ ] Test successful session creation
-    - [ ] Test password hashing
-    - [ ] Test rate limiting
-    - [ ] Test validation errors
-  - [ ] `get-session.test.ts`:
-    - [ ] Test successful retrieval
-    - [ ] Test session not found
-    - [ ] Test password hash not exposed
-  - [ ] `join-session.test.ts`:
-    - [ ] Test successful join
-    - [ ] Test password verification
-    - [ ] Test max participants limit
-    - [ ] Test duplicate name handling
-    - [ ] Test rate limiting
+- [x] **Unit tests for backend functions** (use Redis mock):
+  - [x] `rate-limiter.test.ts`:
+    - [x] Test rate limit enforcement
+    - [x] Test limit reset after time window
+    - [x] Test different limit types (create vs join)
+  - [x] `redis-client.test.ts`:
+    - [x] Test connection retry logic
+    - [x] Test TTL expiration
+    - [x] Test error handling
+  - [x] `validation.test.ts`:
+    - [x] Test session ID validation
+    - [x] Test user name validation
+    - [x] Test input sanitization
+  - [x] `create-session.test.ts`:
+    - [x] Test successful session creation
+    - [x] Test password hashing
+    - [x] Test rate limiting
+    - [x] Test validation errors
+  - [x] `get-session.test.ts`:
+    - [x] Test successful retrieval
+    - [x] Test session not found
+    - [x] Test password hash not exposed
+  - [x] `join-session.test.ts`:
+    - [x] Test successful join
+    - [x] Test password verification
+    - [x] Test max participants limit
+    - [x] Test duplicate name handling
+    - [x] Test rate limiting
 
-- [ ] **Unit tests for frontend API client**:
-  - [ ] `session-api.test.ts`:
-    - [ ] Test createSession API call
-    - [ ] Test joinSession API call
-    - [ ] Test getSession API call
-    - [ ] Test error handling (404, 401, 429, 502)
-    - [ ] Test retry logic for transient errors
-    - [ ] Test timeout handling
+- [x] **Unit tests for frontend API client**:
+  - [x] `session-api.test.ts`:
+    - [x] Test createSession API call
+    - [x] Test joinSession API call
+    - [x] Test getSession API call
+    - [x] Test error handling (404, 401, 429, 502)
+    - [x] Test retry logic for transient errors
+    - [x] Test timeout handling
 
-- [ ] **Integration tests** (local Netlify dev + Redis mock):
-  - [ ] Full create → get → join flow
-  - [ ] Password-protected session flow
-  - [ ] Session expiration handling
-  - [ ] Rate limiting enforcement
-  - [ ] Max participants enforcement
+- [x] **Integration tests** (local Netlify dev + Redis mock):
+  - [x] Full create → get → join flow
+  - [x] Password-protected session flow
+  - [x] Session expiration handling
+  - [x] Rate limiting enforcement
+  - [x] Max participants enforcement
 
-- [ ] **E2E tests** (critical for Phase 4 validation):
-  - [ ] **Multi-browser session sharing**:
+- [x] **E2E tests** (critical for Phase 4 validation):
+  - [x] **Multi-browser session sharing**:
     ```typescript
     test('should share session across browsers', async ({ browser }) => {
       // Browser A: Create session
@@ -596,22 +596,22 @@ i# AI-Powered Standup Assistant - Implementation Plan
       await expect(pageB.locator('text=Leader')).toBeVisible()
     })
     ```
-  - [ ] Password-protected session join flow
-  - [ ] Wrong password error handling
-  - [ ] Session not found error handling
-  - [ ] Session full (21st participant) rejection
-  - [ ] Rate limiting (create 6 sessions rapidly)
-  - [ ] Leader disconnect → Participants can still access session
+  - [x] Password-protected session join flow
+  - [x] Wrong password error handling
+  - [x] Session not found error handling
+  - [x] Session full (21st participant) rejection
+  - [x] Rate limiting (create 6 sessions rapidly)
+  - [x] Leader disconnect → Participants can still access session
 
 **Note**: Redis TTL handles automatic cleanup - sessions expire after 4 hours without manual cleanup job.
 
 **Security Testing Checklist:**
-- [ ] Test XSS payloads in participant names (`<script>alert('xss')</script>`)
-- [ ] Test SQL injection attempts in session IDs (should fail validation)
-- [ ] Test brute force password attempts (should hit rate limit after 10)
-- [ ] Test session ID enumeration (should fail due to randomness)
-- [ ] Verify password hashes never exposed in API responses
-- [ ] Verify Redis connection strings never exposed in errors
+- [x] Test XSS payloads in participant names (`<script>alert('xss')</script>`)
+- [x] Test SQL injection attempts in session IDs (should fail validation)
+- [x] Test brute force password attempts (should hit rate limit after 10)
+- [x] Test session ID enumeration (should fail due to randomness)
+- [x] Verify password hashes never exposed in API responses
+- [x] Verify Redis connection strings never exposed in errors
 
 ---
 
