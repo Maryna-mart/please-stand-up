@@ -20,6 +20,79 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
+## Local Development Setup (Required for Testing)
+
+### Prerequisites
+Before you can test the application locally with full functionality, you need to set up Upstash Redis. This allows you to test the Netlify Functions with the same backend that will be used in production.
+
+### Setup Steps
+
+#### Step 1: Create Upstash Redis Account (Free Tier)
+1. Go to https://console.upstash.com/
+2. Sign up for a free account
+3. Click "Create Database"
+4. Select:
+   - **Region**: Choose one close to you (e.g., `eu-west-1` for Europe)
+   - **Database Name**: `please-stand-up-dev`
+   - **Eviction**: `No Eviction` (for testing, we want sessions to persist)
+5. Click "Create"
+
+#### Step 2: Get Redis Credentials
+1. After database is created, click on the database name
+2. You'll see a "REST API" tab at the top
+3. Copy these two values:
+   - `UPSTASH_REDIS_REST_URL` - looks like `https://xxxxx.upstash.io`
+   - `UPSTASH_REDIS_REST_TOKEN` - your authentication token
+
+#### Step 3: Configure Local Environment
+1. Open `.env` in the project root
+2. Add the following lines (replace with your actual values):
+   ```bash
+   UPSTASH_REDIS_REST_URL=https://your-database-url.upstash.io
+   UPSTASH_REDIS_REST_TOKEN=your_rest_token_here
+   ```
+3. Save the file (it's already in `.gitignore`, so it won't be committed)
+
+#### Step 4: Verify Redis Connection
+Run the dev server:
+```bash
+npm run dev:netlify
+```
+
+You should see:
+- ✅ `Local dev server ready: http://localhost:3000`
+- ✅ `Loaded function create-session`
+- ✅ `Loaded function get-session`
+- ✅ `Loaded function join-session`
+
+Open http://localhost:3000 in your browser. Try creating a session:
+- If you see a session ID generated, Redis is connected! ✅
+- If you see an error, check that `.env` has correct credentials
+
+#### Troubleshooting
+
+**Problem**: "Error: Failed to connect to Redis"
+- **Solution**: Double-check that `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are correct in `.env`
+- Verify you're on the "REST API" tab (not "Redis CLI") in Upstash console
+
+**Problem**: Dev server won't start
+- **Solution**: Make sure port 3000 is not in use: `lsof -i :3000`
+- Kill any existing process: `kill -9 <PID>`
+
+**Problem**: Functions loaded but API calls fail
+- **Solution**: Check browser console for 502 or 503 errors
+- This usually means the Upstash token is invalid - verify in `.env`
+
+### Free Tier Limits (Upstash)
+- **Requests/day**: 10,000 (more than enough for development)
+- **Database size**: Up to 10 MB
+- **Concurrent connections**: 1
+- **Cost**: FREE during development
+
+These limits are fine for local testing. Production deployments may need a paid plan depending on usage.
+
+---
+
 ## Phase 1: Project Setup & Configuration ✅ COMPLETED
 
 ### 1.1 Initialize Vue 3 + Vite Project

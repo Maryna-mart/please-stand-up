@@ -106,21 +106,27 @@ vi.mock('@/lib/session-api', () => {
     }
 
     if (session.expiresAt < Date.now()) {
-      const error = new Error('Session has expired') as Error & { code?: string }
+      const error = new Error('Session has expired') as Error & {
+        code?: string
+      }
       error.code = 'SESSION_EXPIRED'
       throw error
     }
 
     if (session.passwordRequired) {
       if (!password) {
-        const error = new Error('Password required') as Error & { code?: string }
+        const error = new Error('Password required') as Error & {
+          code?: string
+        }
         error.code = '401'
         throw error
       }
       const expectedHash = session.passwordHash
       const providedHash = Buffer.from(password).toString('base64')
       if (providedHash !== expectedHash) {
-        const error = new Error('Incorrect password') as Error & { code?: string }
+        const error = new Error('Incorrect password') as Error & {
+          code?: string
+        }
         error.code = '401'
         throw error
       }
