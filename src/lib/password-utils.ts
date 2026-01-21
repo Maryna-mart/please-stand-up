@@ -1,11 +1,44 @@
 /**
  * Password hashing and verification utilities using Web Crypto API
  * Uses PBKDF2 for secure password hashing (browser-native, no backend needed)
+ * Includes timing-safe comparison to prevent timing attacks
  */
 
 const ITERATIONS = 100000 // OWASP recommendation for PBKDF2
 const HASH_ALGORITHM = 'SHA-256'
 const KEY_LENGTH = 256 // bits
+
+/**
+ * Constant-time comparison for Uint8Array
+ * Prevents timing attacks by comparing all bytes even if first byte differs
+ * Uses browser-native crypto API when available
+ */
+const timingSafeCompare = async (
+  a: Uint8Array,
+  b: Uint8Array
+): Promise<boolean> => {
+  // Check if using Node.js crypto module (for Netlify Functions)
+  try {
+    // Try to use Node.js crypto.timingSafeEqual if available
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nodeCrypto = (globalThis as any).require?.('crypto')
+    if (nodeCrypto?.timingSafeEqual) {
+      return nodeCrypto.timingSafeEqual(a, b)
+    }
+  } catch {
+    // Not in Node.js or crypto module not available, use browser implementation
+  }
+
+  // Browser implementation: constant-time comparison
+  if (a.length !== b.length) return false
+
+  let diff = 0
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i]! ^ b[i]!
+  }
+
+  return diff === 0
+}
 
 /**
  * Hashes a password using PBKDF2
@@ -91,16 +124,9 @@ export const verifyPassword = async (
       KEY_LENGTH
     )
 
-    // Compare hashes (constant-time comparison)
+    // Compare hashes using timing-safe comparison
     const derivedHash = new Uint8Array(hashBuffer)
-    if (derivedHash.length !== storedHash.length) return false
-
-    let diff = 0
-    for (let i = 0; i < derivedHash.length; i++) {
-      diff |= derivedHash[i] ^ storedHash[i]
-    }
-
-    return diff === 0
+    return await timingSafeCompare(derivedHash, storedHash)
   } catch {
     // Invalid hash format or other error
     return false

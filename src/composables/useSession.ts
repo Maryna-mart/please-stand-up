@@ -1,12 +1,18 @@
 /**
  * Session management composable
  * Handles session creation, joining, and state management with localStorage persistence
+ * Includes input validation and secure password handling
  */
 
 import { ref, computed, readonly } from 'vue'
 import type { Session, SessionState, Participant } from '@/types/session'
 import { generateSessionId, generateUserId } from '@/lib/crypto-utils'
 import { hashPassword, verifyPassword } from '@/lib/password-utils'
+import {
+  validateUserName,
+  validatePasswordStrength,
+  sanitizeUserInput,
+} from '@/lib/sanitize'
 
 // Session expiration time (4 hours in milliseconds)
 const SESSION_EXPIRATION_MS = 4 * 60 * 60 * 1000
@@ -22,11 +28,27 @@ const currentUserName = ref<string | null>(null)
  * @param userName - Name of the user creating the session
  * @param password - Optional password to protect the session
  * @returns The created session
+ * @throws Error if input validation fails
  */
 export const createSession = async (
   userName: string,
   password?: string
 ): Promise<Session> => {
+  // Validate user name
+  if (!validateUserName(userName)) {
+    throw new Error(
+      'Invalid user name: must be 1-50 characters with no HTML or control characters'
+    )
+  }
+
+  // Validate password if provided
+  if (password && !validatePasswordStrength(password)) {
+    throw new Error('Password must be at least 8 characters long')
+  }
+
+  // Sanitize user name
+  const sanitizedName = sanitizeUserInput(userName)
+
   const sessionId = generateSessionId()
   const userId = generateUserId()
   const now = new Date()
@@ -40,7 +62,7 @@ export const createSession = async (
     participants: [
       {
         id: userId,
-        name: userName,
+        name: sanitizedName,
         joinedAt: now,
         status: 'waiting',
       },
@@ -52,7 +74,7 @@ export const createSession = async (
   // Save to state and localStorage
   currentSession.value = session
   currentUserId.value = userId
-  currentUserName.value = userName
+  currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
   return session
@@ -64,13 +86,20 @@ export const createSession = async (
  * @param userName - Name of the user joining
  * @param password - Password if session is protected
  * @returns The joined session
- * @throws Error if session not found, expired, or wrong password
+ * @throws Error if session not found, expired, wrong password, or invalid input
  */
 export const joinSession = async (
   sessionId: string,
   userName: string,
   password?: string
 ): Promise<Session> => {
+  // Validate user name
+  if (!validateUserName(userName)) {
+    throw new Error(
+      'Invalid user name: must be 1-50 characters with no HTML or control characters'
+    )
+  }
+
   const session = loadFromLocalStorage(sessionId)
 
   if (!session) {
@@ -92,16 +121,19 @@ export const joinSession = async (
     }
   }
 
+  // Sanitize user name
+  const sanitizedName = sanitizeUserInput(userName)
+
   // Add participant if not already in session
   const userId = generateUserId()
   const existingParticipant = session.participants.find(
-    p => p.name === userName
+    p => p.name === sanitizedName
   )
 
   if (!existingParticipant) {
     const newParticipant: Participant = {
       id: userId,
-      name: userName,
+      name: sanitizedName,
       joinedAt: new Date(),
       status: 'waiting',
     }
@@ -111,7 +143,7 @@ export const joinSession = async (
   // Update state
   currentSession.value = session
   currentUserId.value = existingParticipant?.id || userId
-  currentUserName.value = userName
+  currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
   return session
@@ -130,12 +162,12 @@ export const leaveSession = (): void => {
  * Get the current session state
  */
 export const getSessionState = (): Readonly<SessionState> => {
-  return readonly({
+  return {
     currentSession: currentSession.value,
     currentUserId: currentUserId.value,
     currentUserName: currentUserName.value,
     isLeader: currentSession.value?.leaderId === currentUserId.value || false,
-  })
+  } as unknown as Readonly<SessionState>
 }
 
 /**
