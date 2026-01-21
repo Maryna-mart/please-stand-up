@@ -31,3 +31,6 @@ dist-ssr
 
 # Netlify
 .netlify
+
+# Test coverage reports (generated, not source)
+coverage

@@ -1,21 +1,23 @@
 /**
  * Session management composable
- * Handles session creation, joining, and state management with localStorage persistence
- * Includes input validation and secure password handling
+ * Handles session creation, joining, and state management with backend API
+ * Primary source of truth is now the backend (Netlify Functions + Redis)
+ * localStorage is used as a cache for offline access
  */
 
 import { ref, computed, readonly } from 'vue'
 import type { Session, SessionState, Participant } from '@/types/session'
-import { generateSessionId, generateUserId } from '@/lib/crypto-utils'
-import { hashPassword, verifyPassword } from '@/lib/password-utils'
 import {
   validateUserName,
   validatePasswordStrength,
   sanitizeUserInput,
 } from '@/lib/sanitize'
-
-// Session expiration time (4 hours in milliseconds)
-const SESSION_EXPIRATION_MS = 4 * 60 * 60 * 1000
+import {
+  createSession as apiCreateSession,
+  joinSession as apiJoinSession,
+  type CreateSessionPayload,
+  type JoinSessionPayload,
+} from '@/lib/session-api'
 const STORAGE_KEY = 'standup_session'
 
 // Reactive session state
@@ -24,11 +26,11 @@ const currentUserId = ref<string | null>(null)
 const currentUserName = ref<string | null>(null)
 
 /**
- * Create a new standup session
- * @param userName - Name of the user creating the session
+ * Create a new standup session via API
+ * @param userName - Name of the user creating the session (leader)
  * @param password - Optional password to protect the session
  * @returns The created session
- * @throws Error if input validation fails
+ * @throws Error if validation or API call fails
  */
 export const createSession = async (
   userName: string,
@@ -49,31 +51,38 @@ export const createSession = async (
   // Sanitize user name
   const sanitizedName = sanitizeUserInput(userName)
 
-  const sessionId = generateSessionId()
-  const userId = generateUserId()
-  const now = new Date()
-  const expiresAt = new Date(now.getTime() + SESSION_EXPIRATION_MS)
+  // Call API to create session
+  const payload: CreateSessionPayload = {
+    leaderName: sanitizedName,
+    password,
+  }
 
+  const apiResponse = await apiCreateSession(payload)
+
+  const now = new Date()
+  const expiresAt = new Date(apiResponse.expiresAt)
+
+  // Build session object from API response
   const session: Session = {
-    id: sessionId,
+    id: apiResponse.sessionId,
     createdAt: now,
     expiresAt,
     status: 'waiting',
     participants: [
       {
-        id: userId,
+        id: apiResponse.userId,
         name: sanitizedName,
         joinedAt: now,
         status: 'waiting',
       },
     ],
-    leaderId: userId,
-    passwordHash: password ? await hashPassword(password) : undefined,
+    leaderId: apiResponse.userId,
+    passwordHash: password ? '***' : undefined, // Never store actual hash locally
   }
 
-  // Save to state and localStorage
+  // Save to state and localStorage (as cache)
   currentSession.value = session
-  currentUserId.value = userId
+  currentUserId.value = apiResponse.userId
   currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
@@ -81,7 +90,7 @@ export const createSession = async (
 }
 
 /**
- * Join an existing session
+ * Join an existing session via API
  * @param sessionId - The session ID to join
  * @param userName - Name of the user joining
  * @param password - Password if session is protected
@@ -100,49 +109,39 @@ export const joinSession = async (
     )
   }
 
-  const session = loadFromLocalStorage(sessionId)
-
-  if (!session) {
-    throw new Error('Session not found')
-  }
-
-  if (isSessionExpired(session)) {
-    throw new Error('Session has expired')
-  }
-
-  // Verify password if session is protected
-  if (session.passwordHash) {
-    if (!password) {
-      throw new Error('Password required for this session')
-    }
-    const isValid = await verifyPassword(password, session.passwordHash)
-    if (!isValid) {
-      throw new Error('Incorrect password')
-    }
-  }
-
   // Sanitize user name
   const sanitizedName = sanitizeUserInput(userName)
 
-  // Add participant if not already in session
-  const userId = generateUserId()
-  const existingParticipant = session.participants.find(
-    p => p.name === sanitizedName
-  )
+  // Call API to join session
+  const payload: JoinSessionPayload = {
+    sessionId,
+    participantName: sanitizedName,
+    password,
+  }
 
-  if (!existingParticipant) {
-    const newParticipant: Participant = {
-      id: userId,
-      name: sanitizedName,
-      joinedAt: new Date(),
-      status: 'waiting',
-    }
-    session.participants.push(newParticipant)
+  const apiResponse = await apiJoinSession(payload)
+
+  const now = new Date()
+
+  // Build session object from API response
+  const session: Session = {
+    id: apiResponse.sessionId,
+    createdAt: new Date(apiResponse.createdAt),
+    expiresAt: new Date(apiResponse.createdAt + 4 * 60 * 60 * 1000), // 4 hour expiry from creation
+    status: 'waiting',
+    participants: apiResponse.participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      joinedAt: now,
+      status: 'waiting' as const,
+    })),
+    leaderId: apiResponse.participants[0]?.id || apiResponse.userId, // First participant is leader
+    passwordHash: password ? '***' : undefined, // Never store actual hash locally
   }
 
   // Update state
   currentSession.value = session
-  currentUserId.value = existingParticipant?.id || userId
+  currentUserId.value = apiResponse.userId
   currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
@@ -257,35 +256,11 @@ export const useSession = () => {
   }
 }
 
-// LocalStorage helpers
+// LocalStorage helpers (session data is cached locally, but backend is source of truth)
 const saveToLocalStorage = (session: Session): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
   } catch (error) {
     console.error('Failed to save session to localStorage:', error)
-  }
-}
-
-const loadFromLocalStorage = (sessionId: string): Session | null => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return null
-
-    const session: Session = JSON.parse(stored)
-
-    // Check if it's the requested session
-    if (session.id !== sessionId) return null
-
-    // Convert date strings back to Date objects
-    session.createdAt = new Date(session.createdAt)
-    session.expiresAt = new Date(session.expiresAt)
-    session.participants.forEach(p => {
-      p.joinedAt = new Date(p.joinedAt)
-    })
-
-    return session
-  } catch (error) {
-    console.error('Failed to load session from localStorage:', error)
-    return null
   }
 }
