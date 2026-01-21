@@ -106,6 +106,10 @@ Git hooks are automatically configured via Husky:
 **Required variables:**
 
 ```bash
+# Upstash Redis (session storage) - Get from https://upstash.com
+UPSTASH_REDIS_REST_URL=https://[project].upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_token
+
 # Pusher (real-time sync) - Get from https://pusher.com
 VITE_PUSHER_APP_KEY=your_pusher_key
 VITE_PUSHER_CLUSTER=us2
@@ -139,6 +143,89 @@ please-stand-up/
 ├── e2e/                 # E2E tests
 └── IMPLEMENTATION.md    # Detailed implementation plan
 ```
+
+## Service Limits & Scaling
+
+This MVP uses **free/freemium tiers** designed for small teams. Here are the limits and what to do when you outgrow them:
+
+### Upstash Redis (Session Storage)
+
+**Free Tier:**
+- 10,000 requests/day
+- 256 MB storage
+- 1 database
+
+**Typical Usage:**
+- 7-person team, 1 standup/day: ~16 requests ✅
+- 50-person team, 2 standups/day: ~320 requests ✅
+- 200-person team, 5 standups/day: ~3,200 requests ✅
+
+**When to Upgrade:**
+- If exceeding 10,000 requests/day consistently
+- Paid tier: $0.2/request (auto-scales with usage)
+- Pro tier starts at $48/month with guaranteed capacity
+
+**How to Monitor:**
+1. Check Upstash dashboard for request counts
+2. Set up alerts in Netlify logs for Redis errors
+3. If seeing 429 errors → Time to upgrade
+
+### Pusher Channels (Real-time Sync)
+
+**Free Tier:**
+- 100 concurrent connections
+- 200,000 messages/day
+
+**Typical Usage:**
+- 7-person team: 7 connections, ~500 messages/day ✅
+- 50-person team: 50 connections, ~3,000 messages/day ✅
+- 100-person team: 100 connections, ~6,000 messages/day ✅
+
+**When to Upgrade:**
+- If exceeding 100 concurrent users
+- Paid tier starts at $49/month
+
+### Portkey API (AI Services)
+
+**Free Tier:**
+- No limit, pay-as-you-go model
+- Whisper: $0.02 per minute of audio
+- Claude: Usage-based pricing
+
+**Typical Cost:**
+- 7-person standup, 2 min each: ~$0.30/day
+- Per month: ~$6 (assuming 20 working days)
+
+**When to Optimize:**
+- If costs exceed $50/month, consider:
+  - Caching summaries for similar transcripts
+  - Batching multiple transcriptions
+  - Using Claude's cheaper models for summaries
+
+### SendGrid (Email Delivery)
+
+**Free Tier:**
+- 100 emails/day
+
+**Typical Usage:**
+- 7-person team, 1 summary/day: 1 email ✅
+- 50-person team, 2 standups/day: 2 emails ✅
+- 100-person team, 5 standups/day: 5 emails ✅
+
+**When to Upgrade:**
+- If exceeding 100 emails/day
+- Paid tier: $9.95-99.95/month depending on plan
+
+### Total Monthly Cost (MVP)
+
+| Scale | Upstash | Pusher | Portkey | SendGrid | Total |
+|-------|---------|--------|---------|----------|-------|
+| 7-person, 1 standup | $0 | $0 | $6 | $0 | **$6/mo** |
+| 50-person, 2 standups | $0 | $0 | $48 | $0 | **$48/mo** |
+| 100-person, 5 standups | $0 | $0 | $150 | $9.95 | **$160/mo** |
+| 200-person, 10 standups | $10+ | $49 | $300+ | $59.95 | **$420+/mo** |
+
+**Note:** Costs will increase significantly beyond free tiers. Consider these expenses when planning to scale.
 
 ## Documentation
 
