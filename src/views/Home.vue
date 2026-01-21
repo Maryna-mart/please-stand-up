@@ -192,10 +192,15 @@ const handleCreateSession = async () => {
     isLoading.value = true
     errorMessage.value = ''
 
-    const sessionId = await createSession(
+    if (!createForm.value.name.trim()) {
+      throw new Error('Name is required')
+    }
+
+    const session = await createSession(
+      createForm.value.name.trim(),
       createForm.value.password || undefined
     )
-    await router.push(`/session/${sessionId}`)
+    await router.push(`/session/${session.id}`)
   } catch (error) {
     errorMessage.value =
       error instanceof Error ? error.message : 'Failed to create session'

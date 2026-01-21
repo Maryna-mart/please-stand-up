@@ -22,23 +22,17 @@
 
     <!-- Main Content Grid -->
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Column: Timer & Audio Controls -->
-      <div class="lg:col-span-1 space-y-6">
-        <!-- Timer Section -->
+      <!-- Left Column: Talk Session -->
+      <div class="lg:col-span-1">
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Timer</h2>
-          <Timer
+          <h2 class="text-xl font-bold text-gray-900 mb-4">Your Turn</h2>
+          <TalkSession
             :duration="120"
-            @timer-started="onTimerStarted"
-            @timer-stopped="onTimerStopped"
-            @timer-ended="onTimerEnded"
+            @talk-started="onTalkStarted"
+            @talk-stopped="onTalkStopped"
+            @talk-ended="onTalkEnded"
+            @transcript-ready="onTranscriptReady"
           />
-        </div>
-
-        <!-- Audio Recorder Section -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Your Audio</h2>
-          <AudioRecorder @transcript-ready="onTranscriptReady" />
         </div>
       </div>
 
@@ -92,8 +86,7 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
-import Timer from '../components/Timer.vue'
-import AudioRecorder from '../components/AudioRecorder.vue'
+import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
 import SummaryView from '../components/SummaryView.vue'
@@ -126,16 +119,16 @@ const isGeneratingSummary = ref(false)
 
 const canGenerateSummary = computed(() => transcripts.value.length > 0)
 
-const onTimerStarted = () => {
-  // Timer started event handler
+const onTalkStarted = () => {
+  // Talk started event handler
 }
 
-const onTimerStopped = () => {
-  // Timer stopped event handler
+const onTalkStopped = () => {
+  // Talk stopped event handler
 }
 
-const onTimerEnded = () => {
-  // Timer ended event handler
+const onTalkEnded = () => {
+  // Talk ended event handler
 }
 
 const onTranscriptReady = (transcriptText: string) => {
