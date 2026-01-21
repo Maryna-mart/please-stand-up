@@ -6,9 +6,7 @@ test.describe('Home Page', () => {
   })
 
   test('should display privacy policy link', async ({ page }) => {
-    const privacyLink = page.locator(
-      'a[href="https://openai.com/privacy/"]'
-    )
+    const privacyLink = page.locator('a[href="https://openai.com/privacy/"]')
     await expect(privacyLink).toBeVisible()
     await expect(privacyLink).toHaveAttribute('target', '_blank')
     await expect(privacyLink).toHaveAttribute('rel', 'noopener noreferrer')

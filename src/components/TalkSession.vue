@@ -43,8 +43,8 @@
       <button
         v-if="!isRunning && !isRecording"
         class="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
-        @click="startTalk"
         :disabled="!microphoneReady"
+        @click="startTalk"
       >
         🎤 Talk ({{ formatTime(duration) }})
       </button>
