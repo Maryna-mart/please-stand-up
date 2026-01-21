@@ -23,10 +23,11 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/__tests__/setup.ts'],
+    exclude: ['node_modules', 'dist', 'e2e', '**/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'src/__tests__/', '*.config.ts', 'dist/'],
+      exclude: ['node_modules/', 'src/__tests__/', '*.config.ts', 'dist/', 'e2e/'],
     },
   },
   resolve: {
