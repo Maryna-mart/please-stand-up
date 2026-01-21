@@ -226,6 +226,60 @@ export const addSummary = (summary: string): void => {
   saveToLocalStorage(currentSession.value)
 }
 
+/**
+ * Load session from localStorage cache
+ * Used on app startup to restore previous session
+ * @returns Cached session or null if not found/invalid
+ */
+const loadFromLocalStorage = (): Session | null => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return null
+
+    const session: Session = JSON.parse(stored)
+
+    // Validate required fields exist
+    if (
+      !session.id ||
+      !session.participants ||
+      !Array.isArray(session.participants)
+    ) {
+      return null
+    }
+
+    // Convert date strings back to Date objects
+    session.createdAt = new Date(session.createdAt)
+    session.expiresAt = new Date(session.expiresAt)
+    session.participants.forEach(p => {
+      p.joinedAt = new Date(p.joinedAt)
+    })
+
+    // Check if session is expired
+    if (isSessionExpired(session)) {
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+
+    return session
+  } catch (error) {
+    console.error('Failed to load session from localStorage:', error)
+    return null
+  }
+}
+
+/**
+ * Initialize session from localStorage on app startup
+ * Restores user to previous session without requiring re-login
+ */
+export const initializeSessionFromCache = (): void => {
+  const cachedSession = loadFromLocalStorage()
+  if (cachedSession) {
+    currentSession.value = cachedSession
+    // Note: userId and userName will be set when the user interacts with the session
+    // This is just a cache restore - actual validation happens via backend API
+  }
+}
+
 // Computed properties
 export const useSession = () => {
   const session = computed(() => currentSession.value)
@@ -253,6 +307,7 @@ export const useSession = () => {
     updateParticipantStatus,
     addTranscript,
     addSummary,
+    initializeSessionFromCache,
   }
 }
 

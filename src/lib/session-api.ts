@@ -167,7 +167,7 @@ export async function createSession(
     switch (data.code) {
       case 'RATE_LIMITED':
         throw new Error(
-          `Too many session creations. Please wait ${Math.ceil((data.resetAt || 0 - Date.now()) / 1000)} seconds.`,
+          `Too many session creations. Please wait ${Math.ceil((data.resetAt || 0 - Date.now()) / 1000)} seconds.`
         )
       case 'INVALID_LEADER_NAME':
         throw new Error('Leader name must be 1-50 characters')
@@ -274,7 +274,7 @@ export async function joinSession(
         throw new Error('A participant with this name already exists')
       case 'RATE_LIMITED':
         throw new Error(
-          `Too many join attempts. Please wait ${Math.ceil((data.resetAt || 0 - Date.now()) / 1000)} seconds.`,
+          `Too many join attempts. Please wait ${Math.ceil((data.resetAt || 0 - Date.now()) / 1000)} seconds.`
         )
       case 'INVALID_PARTICIPANT_NAME':
         throw new Error('Participant name must be 1-50 characters')
