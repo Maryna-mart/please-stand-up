@@ -1,0 +1,77 @@
+#!/usr/bin/env sh
+
+# Git commit message validation hook
+# Enforces conventional commits format and length limits
+# Based on: https://www.conventionalcommits.org/
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Extract the first line (subject line)
+SUBJECT=$(echo "$COMMIT_MSG" | head -n 1)
+
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+# Error flag
+ERROR=0
+
+# 1. Check if commit message is empty
+if [ -z "$(echo "$COMMIT_MSG" | tr -d '[:space:]')" ]; then
+  echo "${RED}❌ ERROR: Commit message cannot be empty${NC}"
+  exit 1
+fi
+
+# 2. Check subject line length (max 50 chars - conventional commits best practice)
+SUBJECT_LENGTH=$(echo -n "$SUBJECT" | wc -c)
+if [ "$SUBJECT_LENGTH" -gt 50 ]; then
+  echo "${RED}❌ ERROR: Subject line is too long (${SUBJECT_LENGTH} characters, max 50)${NC}"
+  echo "${YELLOW}⚠️  Keep the subject line concise. Move details to the body.${NC}"
+  ERROR=1
+fi
+
+# 3. Check if subject line starts with conventional commit type
+# Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert, etc.
+if ! echo "$SUBJECT" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .+"; then
+  echo "${YELLOW}⚠️  WARNING: Subject line should follow conventional commits format${NC}"
+  echo "${YELLOW}   Format: <type>(<scope>): <description>${NC}"
+  echo "${YELLOW}   Example: feat(auth): Add login validation${NC}"
+  echo "${YELLOW}   Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert${NC}"
+fi
+
+# 4. Check body line length (max 72 chars - git best practice)
+BODY=$(echo "$COMMIT_MSG" | tail -n +3)
+if [ -n "$BODY" ]; then
+  echo "$BODY" | while IFS= read -r LINE; do
+    # Skip empty lines and lines that are just whitespace
+    if [ -z "$(echo "$LINE" | tr -d '[:space:]')" ]; then
+      continue
+    fi
+
+    LINE_LENGTH=$(echo -n "$LINE" | wc -c)
+    if [ "$LINE_LENGTH" -gt 72 ]; then
+      echo "${YELLOW}⚠️  WARNING: Line ${LINENO} in body is too long (${LINE_LENGTH} characters, max 72)${NC}"
+      echo "${YELLOW}   Line: ${LINE}${NC}"
+    fi
+  done
+fi
+
+# 5. Enforce blank line between subject and body
+if [ "$(echo "$COMMIT_MSG" | wc -l)" -gt 1 ]; then
+  SECOND_LINE=$(echo "$COMMIT_MSG" | sed -n '2p')
+  if [ -n "$(echo "$SECOND_LINE" | tr -d '[:space:]')" ]; then
+    echo "${RED}❌ ERROR: Blank line required between subject and body${NC}"
+    ERROR=1
+  fi
+fi
+
+if [ $ERROR -eq 1 ]; then
+  echo ""
+  echo "${RED}Commit message validation failed. Please fix the errors above.${NC}"
+  exit 1
+fi
+
+exit 0

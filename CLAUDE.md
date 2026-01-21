@@ -1,5 +1,41 @@
 # AI-Powered Standup Assistant
 
+## Development Guidelines
+
+### Commit Message Format
+This project enforces [Conventional Commits](https://www.conventionalcommits.org/) format with a 50-character subject line limit (enforced by git hooks). This makes commit history readable and enables automated changelog generation.
+
+**Format:** `<type>(<scope>): <description>`
+
+**Valid Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation only
+- `style` - Code style changes (formatting, semicolons, etc.)
+- `refactor` - Code refactoring without feature changes
+- `perf` - Performance improvements
+- `test` - Adding or updating tests
+- `chore` - Dependencies, build tools, CI/CD
+- `ci` - CI/CD pipeline changes
+- `build` - Build system changes
+- `revert` - Revert a previous commit
+
+**Rules:**
+- Subject line: max 50 characters, lowercase, no period
+- Body: blank line after subject, max 72 characters per line
+- Scope: optional, describes affected area (e.g., auth, session, ui)
+
+**Examples:**
+```
+feat(auth): Add JWT token validation
+
+fix(session): Prevent localStorage corruption on invalid JSON
+
+docs: Update security guidelines
+
+refactor(components): Simplify timer logic
+```
+
 ## Core Concept
 Web app for 7-10 person remote teams: synchronized timer + AI transcription (Whisper) + AI summary (Claude) via Portkey → email delivery.
 
