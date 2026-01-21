@@ -4,15 +4,16 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [x] Phase 1: Project Setup & Configuration ✅
 - [x] Phase 2: Core Session Management ✅
 - [x] Phase 3: UI Components & Views ✅
-- [ ] Phase 4: Code Quality Improvements & Basic Real-time Sync
-- [ ] Phase 5: AI Integration (Netlify Functions) - Transcription & Summarization
-- [ ] Phase 6: Complete Real-time Features (Transcript Sync)
-- [ ] Phase 7: Email Delivery
-- [ ] Phase 8: Security & Privacy Features
-- [ ] Phase 9: Testing & Quality Assurance
-- [ ] Phase 10: Deployment
+- [ ] Phase 4: Backend Session Storage (Netlify Functions + Redis)
+- [ ] Phase 5: Code Quality Improvements & Basic Real-time Sync
+- [ ] Phase 6: AI Integration (Netlify Functions) - Transcription & Summarization
+- [ ] Phase 7: Complete Real-time Features (Transcript Sync)
+- [ ] Phase 8: Email Delivery
+- [ ] Phase 9: Security & Privacy Features
+- [ ] Phase 10: Testing & Quality Assurance
+- [ ] Phase 11: Deployment
 
-**Note**: Phase order optimized for logical dependency flow. Audio recording UI was completed in Phase 3.
+**Note**: Phase 4 (Backend Session Storage) moved to priority position - required for multi-browser/remote functionality. This is essential for the MVP to work across different browsers and devices, not just same-browser testing.
 
 ---
 
@@ -268,9 +269,113 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 4: Code Quality Improvements & Basic Real-time Sync
+## Phase 4: Backend Session Storage (Netlify Functions + Upstash Redis)
 
-### 4.0 Code Quality Improvements (Do First)
+**Priority**: CRITICAL - Required for multi-browser/remote team functionality. Current localStorage-only approach only works in same browser.
+
+**Architecture Decision**: Use Netlify Functions + Upstash Redis instead of full database:
+- Upstash provides free tier: Up to 10,000 requests/day, perfect for MVP
+- Serverless (no server management) - fits Netlify hosting
+- Fast response times for session validation
+- Simple key-value storage ideal for session data
+- Cost: Free tier or ~$0-10/month if exceeded
+
+### 4.1 Upstash Redis Setup
+- [ ] Create Upstash account (upstash.com)
+- [ ] Create Redis database (free tier)
+- [ ] Add connection details to Netlify environment variables:
+  - `UPSTASH_REDIS_REST_URL`
+  - `UPSTASH_REDIS_REST_TOKEN`
+- [ ] Document setup in `.env.example`
+
+### 4.2 Backend Session Storage Functions
+- [ ] Create `netlify/functions/lib/redis-client.ts`
+  - [ ] Initialize Redis REST client with env variables
+  - [ ] Add helper functions: `setSession()`, `getSession()`, `deleteSession()`
+  - [ ] Add automatic expiration (4 hours using Redis TTL)
+  - [ ] Error handling with proper logging
+
+- [ ] Create `netlify/functions/create-session.ts` (HTTP POST)
+  - [ ] Accept: `{ leaderName: string, password?: string }`
+  - [ ] Generate cryptographically secure session ID
+  - [ ] Hash password if provided
+  - [ ] Store session in Redis with 4-hour TTL
+  - [ ] Return: `{ sessionId: string, expiresAt: timestamp }`
+  - [ ] Error handling: Invalid input → 400, Redis error → 502
+
+- [ ] Create `netlify/functions/get-session.ts` (HTTP GET)
+  - [ ] Accept: `sessionId` (query param)
+  - [ ] Retrieve session from Redis
+  - [ ] Return: `{ id, createdAt, status, participants, passwordRequired: boolean }`
+  - [ ] Error handling: Session not found → 404, Redis error → 502
+
+- [ ] Create `netlify/functions/join-session.ts` (HTTP POST)
+  - [ ] Accept: `{ sessionId: string, participantName: string, password?: string }`
+  - [ ] Verify session exists
+  - [ ] Verify password if required
+  - [ ] Add participant to session
+  - [ ] Update Redis
+  - [ ] Return: `{ sessionId, participants, status }`
+  - [ ] Error handling: Not found → 404, Wrong password → 401, Invalid input → 400
+
+### 4.3 Frontend API Integration
+- [ ] Create `src/lib/session-api.ts`
+  - [ ] `createSession(leaderName: string, password?: string): Promise<{ sessionId: string }>`
+  - [ ] `getSession(sessionId: string): Promise<Session | null>`
+  - [ ] `joinSession(sessionId: string, participantName: string, password?: string): Promise<Session>`
+  - [ ] Error handling with user-friendly messages
+  - [ ] Retry logic for transient errors
+
+- [ ] Update `src/composables/useSession.ts`
+  - [ ] Replace local session creation with API call to `create-session`
+  - [ ] Replace local session join with API call to `join-session`
+  - [ ] Keep local state for current session
+  - [ ] Keep localStorage as backup/cache (not primary)
+
+- [ ] Create `JoinSessionModal.vue` component
+  - [ ] Modal shown when opening session link in new browser/tab
+  - [ ] Input: Name (required), Password (optional)
+  - [ ] Submit: Call `joinSession()` API
+  - [ ] Error handling: Show "Session Not Found" if 404, "Wrong Password" if 401
+  - [ ] Success: Add participant to local session state
+
+### 4.4 Session View Updates
+- [ ] Update `Session.vue` to detect new browser/tab context
+  - [ ] Check if current user is in session participants
+  - [ ] If not: Show `JoinSessionModal`
+  - [ ] If yes: Show full session UI
+  - [ ] Handle "Session Not Found" error → Redirect to home with message
+
+### 4.5 Error Handling & Edge Cases
+- [ ] Session expires while in use → Show error, prompt to create new
+- [ ] API returns 404 → Show "Session not found or expired"
+- [ ] API returns 401 → Show "Incorrect password"
+- [ ] Redis connection fails → Show "Connection error, please refresh"
+- [ ] Participant reconnects after network failure → Retrieve existing session
+
+### 4.6 Testing
+- [ ] Unit tests for Redis client (mocked)
+- [ ] Unit tests for session API client
+- [ ] Integration tests for all Netlify functions:
+  - [ ] Create session successfully
+  - [ ] Get session with/without password
+  - [ ] Join session (valid/invalid password)
+  - [ ] Session expiration
+  - [ ] Session not found
+- [ ] E2E tests:
+  - [ ] Create session in Browser A
+  - [ ] Open session link in Browser B (incognito/different browser)
+  - [ ] Join session with name and optional password
+  - [ ] Both browsers see same participants
+  - [ ] Leader can see participants list updating
+
+**Note**: Redis TTL handles automatic cleanup - sessions expire after 4 hours without manual cleanup job.
+
+---
+
+## Phase 5: Code Quality Improvements & Basic Real-time Sync
+
+### 5.0 Code Quality Improvements (Do First)
 **Note**: These refactoring tasks improve maintainability before adding real-time features.
 
 - [ ] **Extract shared type definitions**
@@ -299,7 +404,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   export const AUDIO_MIME_TYPE = 'audio/webm;codecs=opus'
   export const MAX_AUDIO_SIZE = 25 * 1024 * 1024 // 25MB for Whisper
   ```
-  - [ ] Update usage in: Timer.vue, AudioRecorder.vue
+  - [ ] Update usage in: TalkSession.vue
 
 - [ ] **Add window type declarations** `src/types/window.d.ts`:
   ```typescript
@@ -310,13 +415,13 @@ i# AI-Powered Standup Assistant - Implementation Plan
   }
   export {}
   ```
-  - [ ] Remove type assertion from AudioRecorder.vue
+  - [ ] Remove type assertion from TalkSession.vue
 
 - [ ] **Optional: Extract reusable composables** (if time permits)
   - [ ] `src/composables/useClipboard.ts` - Copy-to-clipboard functionality
   - [ ] `src/composables/useFileDownload.ts` - File download functionality
 
-### 4.1 Pusher Integration Setup
+### 5.1 Pusher Integration Setup
 - [ ] Create `src/lib/pusher-client.ts`
 - [ ] Initialize Pusher client with env variables
 - [ ] Add connection error handling
@@ -324,14 +429,14 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Client initialization
   - [ ] Connection handling
 
-### 4.2 Pusher Composable
+### 5.2 Pusher Composable
 - [ ] Create `src/composables/usePusher.ts`
 - [ ] Implement channel subscription/unsubscription
 - [ ] Event listeners:
   - `user-joined`
   - `user-left`
-  - `timer-started`
-  - `timer-stopped`
+  - `talk-started`
+  - `talk-stopped`
   - `transcript-ready`
   - `summary-generated`
 - [ ] Write unit tests:
@@ -339,28 +444,28 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Event handling
   - [ ] Cleanup on unmount
 
-### 4.3 Real-time State Sync (Basic Features Only)
+### 5.3 Real-time State Sync (Basic Features Only)
 - [ ] Integrate Pusher with session store (useSession)
 - [ ] Broadcast local events to channel:
-  - [ ] `timer-started` / `timer-stopped` events
+  - [ ] `talk-started` / `talk-stopped` events
   - [ ] `user-joined` / `user-left` events
   - [ ] Participant status updates (`waiting`, `recording`, `done`)
 - [ ] Update local state from remote events
 - [ ] Handle race conditions (optimistic UI updates)
 - [ ] Write integration tests:
-  - [ ] Timer sync across clients
+  - [ ] Talk session sync across clients
   - [ ] Participant join/leave sync
   - [ ] Participant status updates
 
-**Note**: Transcript sync (`transcript-ready` event) will be implemented in Phase 6 after AI integration is complete, ensuring we can test with real transcription data.
+**Note**: Transcript sync (`transcript-ready` event) will be implemented in Phase 7 after AI integration is complete, ensuring we can test with real transcription data.
 
 ---
 
-## Phase 5: AI Integration (Netlify Functions)
+## Phase 6: AI Integration (Netlify Functions)
 
-**Status**: AudioRecorder UI component completed in Phase 3. This phase focuses on connecting it to AI services.
+**Status**: TalkSession UI component completed in Phase 3. This phase focuses on connecting it to AI services.
 
-### 5.1 Portkey Client Setup
+### 6.1 Portkey Client Setup
 - [ ] Create `netlify/functions/lib/portkey-server.ts`
   - [ ] Initialize Portkey client with API key from env
   - [ ] Configure for Whisper (transcription) and Claude (summarization)
@@ -372,7 +477,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Error handling
   - [ ] Retry logic
 
-### 5.2 Transcription Function (Netlify)
+### 6.2 Transcription Function (Netlify)
 - [ ] Create `netlify/functions/transcribe.ts`
 - [ ] Accept multipart/form-data with audio file
 - [ ] Validate audio file:
@@ -391,7 +496,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Language detection (German vs English)
   - [ ] Error scenarios
 
-### 5.3 Summarization Function (Netlify)
+### 6.3 Summarization Function (Netlify)
 - [ ] Create `netlify/functions/summarize.ts`
 - [ ] Accept JSON: `{ sessionId, transcripts: Array<{name, text}> }`
 - [ ] Detect language from transcripts (majority vote)
@@ -421,8 +526,8 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Multiple participants
   - [ ] Error scenarios
 
-### 5.4 Frontend API Integration
-- [ ] Create `src/lib/api-client.ts`
+### 6.4 Frontend API Integration
+- [ ] Create `src/lib/ai-api.ts`
 - [ ] Functions:
   - [ ] `uploadAudio(sessionId: string, participantId: string, audioBlob: Blob): Promise<{transcript: string, language: string}>`
   - [ ] `generateSummary(sessionId: string, transcripts: Array<{name: string, text: string}>): Promise<string>`
@@ -433,8 +538,8 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Error handling
   - [ ] Response parsing
 
-### 5.5 Connect AudioRecorder to Transcription
-- [ ] Update `src/components/AudioRecorder.vue`:
+### 6.5 Connect TalkSession to Transcription
+- [ ] Update `src/components/TalkSession.vue`:
   - [ ] Replace mock `uploadAudio()` with real API call
   - [ ] Show upload progress
   - [ ] Display transcript when ready
@@ -444,7 +549,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Pass transcripts to TranscriptView component
   - [ ] Enable "Generate Summary" button when transcripts exist
 
-### 5.6 Connect Summary to AI
+### 6.6 Connect Summary to AI
 - [ ] Update `src/views/Session.vue`:
   - [ ] Replace mock `generateSummary()` with real API call
   - [ ] Show generation progress
@@ -453,11 +558,11 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 6: Complete Real-time Features (Transcript Sync)
+## Phase 7: Complete Real-time Features (Transcript Sync)
 
-**Prerequisites**: Phase 4 (basic Pusher setup) and Phase 5 (AI transcription) must be complete.
+**Prerequisites**: Phase 5 (basic Pusher setup) and Phase 6 (AI transcription) must be complete.
 
-### 6.1 Add Transcript Events to Pusher
+### 7.1 Add Transcript Events to Pusher
 - [ ] Update `src/composables/usePusher.ts`:
   - [ ] Add `transcript-ready` event listener
   - [ ] Add `summary-generated` event listener
@@ -465,26 +570,26 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Add transcript storage to session state
   - [ ] Add summary storage to session state
 
-### 6.2 Broadcast Transcript Events
-- [ ] Update `src/components/AudioRecorder.vue`:
+### 7.2 Broadcast Transcript Events
+- [ ] Update `src/components/TalkSession.vue`:
   - [ ] After successful transcription, broadcast `transcript-ready` event via Pusher
   - [ ] Include: participantId, participantName, transcript text, duration
 - [ ] Update `src/views/Session.vue`:
   - [ ] After generating summary, broadcast `summary-generated` event
   - [ ] Include: summary text, generated timestamp
 
-### 6.3 Sync Transcripts Across Clients
+### 7.3 Sync Transcripts Across Clients
 - [ ] Listen for `transcript-ready` events from other participants
 - [ ] Update local transcript list when remote transcript arrives
 - [ ] Update participant status to "done" when transcript ready
 - [ ] Show visual notification when new transcript arrives
 
-### 6.4 Sync Summary Across Clients
+### 7.4 Sync Summary Across Clients
 - [ ] Listen for `summary-generated` event
 - [ ] Display summary when it arrives (even if not the generator)
 - [ ] Show visual notification when summary is ready
 
-### 6.5 Integration Tests
+### 7.5 Integration Tests
 - [ ] Write multi-client tests:
   - [ ] Participant A records → Participant B sees transcript
   - [ ] Leader generates summary → All participants see it
@@ -493,9 +598,9 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 7: Email Delivery
+## Phase 8: Email Delivery
 
-### 7.1 SendGrid Integration
+### 8.1 SendGrid Integration
 - [ ] Create `netlify/functions/lib/sendgrid-client.ts`
 - [ ] Initialize SendGrid with API key
 - [ ] Create email template function
@@ -503,7 +608,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Client initialization
   - [ ] Template generation
 
-### 7.2 Send Summary Function
+### 8.2 Send Summary Function
 - [ ] Create `netlify/functions/send-summary.ts`
 - [ ] Accept:
   - Session ID
@@ -524,7 +629,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Invalid email handling
   - [ ] Error scenarios
 
-### 7.3 Email UI Integration
+### 8.3 Email UI Integration
 - [ ] Add email input form to Summary component
 - [ ] Validate email addresses (multiple, comma-separated)
 - [ ] Send button with loading state
@@ -536,9 +641,9 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 8: Security & Privacy Features
+## Phase 9: Security & Privacy Features
 
-### 8.1 HTTPS Enforcement
+### 9.1 HTTPS Enforcement
 - [ ] Configure Netlify to force HTTPS
 - [ ] Add HTTPS check in app initialization
 - [ ] Add security headers in `netlify.toml`:
@@ -547,14 +652,14 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - `Referrer-Policy`
   - `Permissions-Policy`
 
-### 8.2 API Key Protection
+### 9.2 API Key Protection
 - [ ] Verify all API keys are in Netlify environment variables
 - [ ] Ensure no keys in client-side code
 - [ ] Add environment variable validation in functions
 - [ ] Document required env vars in `.env.example`
 
-### 8.3 Session Security
-- [ ] Implement session expiration cleanup (4 hours)
+### 9.3 Session Security
+- [ ] Implement session expiration cleanup (4 hours via Redis TTL)
 - [ ] Add CSRF protection for sensitive operations
 - [ ] Validate session IDs on all function calls
 - [ ] Rate limiting for session creation
@@ -563,7 +668,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Invalid session ID handling
   - [ ] Rate limiting
 
-### 8.4 Privacy Features
+### 9.4 Privacy Features
 - [ ] Add privacy warning banner:
   - "Audio sent to Portkey/OpenAI"
   - Link to privacy policies
@@ -576,7 +681,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
   - [ ] Data cleanup triggers
   - [ ] Session deletion
 
-### 8.5 Input Validation & Sanitization
+### 9.5 Input Validation & Sanitization
 - [ ] Validate all user inputs:
   - Session IDs (format, length)
   - Participant names (XSS prevention)
@@ -590,9 +695,9 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 9: Testing & Quality Assurance
+## Phase 10: Testing & Quality Assurance
 
-### 9.1 Unit Test Coverage
+### 10.1 Unit Test Coverage
 - [ ] Achieve >80% coverage for:
   - [ ] Utility functions
   - [ ] Composables
@@ -601,27 +706,28 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [ ] Run coverage report: `npm run test:coverage`
 - [ ] Fix any uncovered critical paths
 
-### 9.2 Integration Tests
+### 10.2 Integration Tests
 - [ ] Test Netlify Functions locally:
+  - [ ] Session management functions
   - [ ] Transcribe function
   - [ ] Summarize function
   - [ ] Send-summary function
 - [ ] Test Pusher integration
 - [ ] Test session flow end-to-end
 
-### 9.3 E2E Tests (Playwright)
+### 10.3 E2E Tests (Playwright)
 - [ ] Complete standup flow:
-  - [ ] Create session
-  - [ ] Join session
-  - [ ] Record audio
+  - [ ] Create session (via API)
+  - [ ] Join session in new browser (via modal)
+  - [ ] Record audio with Talk button
   - [ ] View transcript
   - [ ] Generate summary
   - [ ] Send email
 - [ ] Multi-user scenarios (2+ browsers)
-- [ ] Error scenarios
+- [ ] Error scenarios (session not found, wrong password)
 - [ ] Mobile responsive testing
 
-### 9.4 Manual Testing Checklist
+### 10.4 Manual Testing Checklist
 - [ ] Test on browsers: Chrome, Firefox, Safari, Edge
 - [ ] Test on devices: Desktop, tablet, mobile
 - [ ] Test microphone permissions on different browsers
@@ -631,7 +737,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [ ] Test email delivery
 - [ ] Test error handling (network errors, API failures)
 
-### 9.5 Performance Testing
+### 10.5 Performance Testing
 - [ ] Test with 7-10 participants
 - [ ] Measure audio upload times
 - [ ] Measure transcription response times
@@ -639,7 +745,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [ ] Check for memory leaks (long sessions)
 - [ ] Optimize bundle size
 
-### 9.6 Accessibility Testing
+### 10.6 Accessibility Testing
 - [ ] Keyboard navigation works
 - [ ] Screen reader compatibility
 - [ ] WCAG 2.1 AA compliance
@@ -648,9 +754,9 @@ i# AI-Powered Standup Assistant - Implementation Plan
 
 ---
 
-## Phase 10: Deployment
+## Phase 11: Deployment
 
-### 10.1 Pre-Deployment Checklist
+### 11.1 Pre-Deployment Checklist
 - [ ] All tests passing
 - [ ] Environment variables documented
 - [ ] README.md updated with setup instructions
@@ -658,7 +764,7 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [ ] Performance benchmarks acceptable
 - [ ] Browser compatibility verified
 
-### 10.2 Netlify Production Setup
+### 11.2 Netlify Production Setup
 - [ ] Create Netlify account/site
 - [ ] Connect GitHub repository
 - [ ] Configure build settings
@@ -666,34 +772,36 @@ i# AI-Powered Standup Assistant - Implementation Plan
 - [ ] Configure custom domain (optional)
 - [ ] Enable HTTPS
 
-### 10.3 Third-Party Service Setup
+### 11.3 Third-Party Service Setup
+- [ ] Upstash Redis account + database
 - [ ] Pusher Channels account + app creation
 - [ ] Portkey account + API key
 - [ ] SendGrid account + API key + sender verification
 - [ ] Verify free tier limits:
+  - Upstash Redis: Up to 10,000 requests/day
   - Pusher: 100 concurrent connections
   - SendGrid: 100 emails/day
   - Portkey: Usage-based pricing
 
-### 10.4 Production Deploy
+### 11.4 Production Deploy
 - [ ] Deploy to Netlify
 - [ ] Verify all functions deploy successfully
 - [ ] Test production environment:
-  - [ ] Create session works
-  - [ ] Join session works
+  - [ ] Create session works (via API)
+  - [ ] Join session works (with modal)
   - [ ] Audio recording works
   - [ ] Transcription works
   - [ ] Summary generation works
   - [ ] Email delivery works
 - [ ] Monitor for errors (Netlify logs)
 
-### 10.5 Post-Deployment
+### 11.5 Post-Deployment
 - [ ] Set up error monitoring (Sentry or similar)
 - [ ] Configure analytics (optional)
 - [ ] Create deployment documentation
 - [ ] Share with initial test users
 - [ ] Collect feedback
-- [ ] Monitor costs (Portkey usage)
+- [ ] Monitor costs (Upstash, Portkey usage)
 
 ---
 
