@@ -5,7 +5,7 @@
   "description": "A smart web application designed for remote teams to conduct efficient daily standup meetings with synchronized timers, AI-powered transcription, and automated summaries.",
   "scripts": {
     "dev": "vite",
-    "dev:netlify": "netlify dev",
+    "dev:netliify": "netlify dev",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.ts,.js",

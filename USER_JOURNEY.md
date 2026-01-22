@@ -9,9 +9,7 @@ Shares link with team
 Participant Path:
 
 Receives link from leader (e.g., https://app.com/session/abc123xyz)
-Clicks link → Automatically taken to session
-Modal appears: Enter name + password (if session is protected)
-Joins session
+Clicks link → Modal appears: Enter name + password (if session is protected) -> Joins session
 2. Session Room
 All participants see the same synchronized view
 Real-time updates via Pusher when anyone joins/leaves
