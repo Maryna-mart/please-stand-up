@@ -1,0 +1,8 @@
+# Netlify redirects file
+# This file is copied to dist/ during build and used in production only
+
+# API routes go to Netlify Functions
+/api/*  /.netlify/functions/:splat  200
+
+# SPA fallback - serve index.html for all other routes
+/*  /index.html  200

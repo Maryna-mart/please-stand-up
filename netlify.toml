@@ -7,13 +7,16 @@
   command = "npm run dev"
   port = 3000
   targetPort = 5173
+  autoLaunch = false
+  # Note: If port 5173 is in use, Vite will try 5174, 5175, etc.
+  # The proxy will attempt to find the dev server automatically
 
 [[headers]]
   for = "/*"
   [headers.values]
     # XSS Protection
     X-XSS-Protection = "1; mode=block"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self' localhost:5173 localhost:5174; script-src 'self' 'wasm-unsafe-eval' localhost:5173 localhost:5174; style-src 'self' 'unsafe-inline' localhost:5173 localhost:5174; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https: ws: wss: localhost:5173 localhost:5174 localhost:3000; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
     # Clickjacking Protection
     X-Frame-Options = "DENY"
@@ -34,7 +37,10 @@
     X-Permitted-Cross-Domain-Policies = "none"
     X-Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# SPA Fallback for production only
+# Note: This is disabled for local dev to avoid MIME type issues
+# Netlify automatically handles SPA routing in production
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200

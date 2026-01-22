@@ -35,11 +35,11 @@ cp .env.example .env
 ### Development
 
 ```bash
-# Start Vite dev server
-npm run dev
-
-# Start Netlify dev server (with serverless functions)
+# Start the app locally (REQUIRED - includes Netlify Functions)
 npm run dev:netlify
+
+# The app will be available at http://localhost:3000
+# This command starts both Vite (frontend) and Netlify Functions (backend)
 
 # Run linter
 npm run lint
@@ -227,7 +227,37 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 
 **Note:** Costs will increase significantly beyond free tiers. Consider these expenses when planning to scale.
 
+## Troubleshooting
+
+### Blank Page on `http://localhost:3000`
+- **Problem**: Browser shows blank page or "Failed to load module script" error
+- **Solution**: Make sure you're using `npm run dev:netlify` (not `npm run dev`)
+- **Why**: The app requires Netlify Functions for session management
+
+### Port Already in Use
+- **Problem**: "Port 3000 is already in use"
+- **Solution**:
+  ```bash
+  # Find process using port 3000
+  lsof -i :3000
+
+  # Kill the process
+  kill -9 <PID>
+  ```
+
+### Netlify Functions Not Loading
+- **Problem**: API calls return 404 or 502 errors
+- **Solution**:
+  1. Check that `.env` file exists with all required variables
+  2. Restart the dev server: `npm run dev:netlify`
+  3. Check Netlify dev logs for function compilation errors
+
+### Pusher Connection Failed
+- **Problem**: Real-time sync not working
+- **Solution**: Verify `VITE_PUSHER_APP_KEY` and `VITE_PUSHER_CLUSTER` in `.env`
+
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - Technical specifications
 - [IMPLEMENTATION.md](IMPLEMENTATION.md) - Detailed implementation plan with checklist
+- [SERVICE_SETUP.md](SERVICE_SETUP.md) - Guide for setting up third-party services

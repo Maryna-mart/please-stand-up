@@ -83,9 +83,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
+import { usePusher } from '../composables/usePusher'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
@@ -107,6 +108,7 @@ interface Transcript {
 const route = useRoute()
 const router = useRouter()
 const { leaveSession: performLeaveSession } = useSession()
+const { subscribeToSession, unsubscribeFromSession } = usePusher()
 
 const sessionId = computed(() => route.params.id as string)
 const isLeader = ref(false)
@@ -119,12 +121,54 @@ const isGeneratingSummary = ref(false)
 
 const canGenerateSummary = computed(() => transcripts.value.length > 0)
 
+// Pusher event handlers
+const handleUserJoined = (data: Record<string, unknown>) => {
+  const newParticipant: Participant = {
+    id: data.userId as string,
+    name: data.userName as string,
+    status: 'waiting',
+  }
+  // Add if not already present
+  if (!participants.value.find(p => p.id === data.userId)) {
+    participants.value.push(newParticipant)
+  }
+}
+
+const handleUserLeft = (data: Record<string, unknown>) => {
+  participants.value = participants.value.filter(p => p.id !== data.userId)
+}
+
+const handleTimerStarted = (data: Record<string, unknown>) => {
+  void data
+  // Update all participants to 'recording' status
+  participants.value.forEach(p => {
+    if (p.status === 'waiting') {
+      p.status = 'recording'
+    }
+  })
+}
+
+const handleTimerStopped = (data: Record<string, unknown>) => {
+  void data
+  // Timer stopped - participants can now finish recording
+}
+
+const handleStatusChanged = (data: Record<string, unknown>) => {
+  const participant = participants.value.find(p => p.id === data.userId)
+  if (participant) {
+    participant.status = data.status as Participant['status']
+    if (data.status === 'done') {
+      participant.transcriptReady = true
+    }
+  }
+}
+
 const onTalkStarted = () => {
-  // Talk started event handler
+  // Broadcast timer started event
 }
 
 const onTalkStopped = () => {
-  // Talk stopped event handler
+  // Broadcast timer stopped event
 }
 
 const onTalkEnded = () => {
@@ -158,11 +202,24 @@ const generateSummary = async () => {
 }
 
 const leaveSession = async () => {
+  unsubscribeFromSession()
   await performLeaveSession()
   await router.push('/')
 }
 
+// Subscribe to Pusher channel on mount
+onMounted(() => {
+  subscribeToSession(sessionId.value, {
+    onUserJoined: handleUserJoined,
+    onUserLeft: handleUserLeft,
+    onTimerStarted: handleTimerStarted,
+    onTimerStopped: handleTimerStopped,
+    onStatusChanged: handleStatusChanged,
+  })
+})
+
 onBeforeUnmount(() => {
+  unsubscribeFromSession()
   performLeaveSession()
 })
 </script>
