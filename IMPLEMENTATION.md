@@ -1,18 +1,43 @@
 i# AI-Powered Standup Assistant - Implementation Plan
 
+## 🎯 MVP Priorities (Updated 2026-01-22)
+
+**Status**: Phases 1-4 Complete ✅ - Backend + Security + UI Ready
+
+**Must Have for MVP** (~15-20 hours):
+1. ⚠️ **Phase 5: Real-time Sync** (4-6h) - Pusher integration for user join/leave, status updates, timer sync
+2. ⚠️ **Phase 6: AI Integration** (6-8h) - Whisper transcription + Claude summarization
+3. ⚠️ **Phase 8: Email Delivery** (3-4h) - SendGrid integration
+4. ⚠️ **Phase 9.4: Privacy Banner** (1-2h) - Warning about data sent to OpenAI/Anthropic
+
+**Can Skip for MVP**:
+- Phase 7: Real-time transcript sync (can wait until all done)
+- Phase 9.1-9.3: Additional security (already covered in Phase 3.5 & 4)
+- Phase 10: Comprehensive testing (manual testing sufficient initially)
+- Phase 11: Production deployment (test on dev server first)
+
+**Services Setup Required**: See [SERVICE_SETUP.md](SERVICE_SETUP.md) for:
+- Pusher Channels (real-time sync)
+- Portkey (AI transcription + summarization)
+- SendGrid (email delivery)
+
+**Expected Monthly Cost**: ~$2.60 (well within $10 budget) ✅
+
+---
+
 ## Progress Tracking
 - [x] Phase 1: Project Setup & Configuration ✅
 - [x] Phase 2: Core Session Management ✅
 - [x] Phase 3: UI Components & Views ✅
 - [x] Phase 3.5: Critical Security Fixes ✅
-- [x] Phase 4: Backend Session Storage (Netlify Functions + In-Memory Redis) ✅
-- [ ] Phase 5: Code Quality Improvements & Basic Real-time Sync
-- [ ] Phase 6: AI Integration (Netlify Functions) - Transcription & Summarization
-- [ ] Phase 7: Complete Real-time Features (Transcript Sync)
-- [ ] Phase 8: Email Delivery
-- [ ] Phase 9: Security & Privacy Features
-- [ ] Phase 10: Testing & Quality Assurance
-- [ ] Phase 11: Deployment
+- [x] Phase 4: Backend Session Storage (Netlify Functions + Upstash Redis) ✅
+- [ ] **Phase 5: Real-time Sync (Pusher)** ⚠️ **MVP CRITICAL - DO NEXT**
+- [ ] **Phase 6: AI Integration** ⚠️ **MVP CRITICAL**
+- [ ] Phase 7: Complete Real-time Features - *Post-MVP*
+- [ ] **Phase 8: Email Delivery** ⚠️ **MVP CRITICAL**
+- [ ] Phase 9: Security & Privacy (9.4 is MVP critical)
+- [ ] Phase 10: Testing - *Post-MVP*
+- [ ] Phase 11: Deployment - *Post-MVP*
 
 **Note**: Phase 4 (Backend Session Storage) moved to priority position - required for multi-browser/remote functionality. This is essential for the MVP to work across different browsers and devices, not just same-browser testing.
 
@@ -688,53 +713,9 @@ These limits are fine for local testing. Production deployments may need a paid 
 
 ---
 
-## Phase 5: Code Quality Improvements & Basic Real-time Sync
+## Phase 5: Real-time Sync (Pusher Integration) ⚠️ **MVP CRITICAL**
 
-### 5.0 Code Quality Improvements (Do First)
-**Note**: These refactoring tasks improve maintainability before adding real-time features.
-
-- [ ] **Extract shared type definitions**
-  - [ ] Create `src/types/participant.ts`:
-    ```typescript
-    export interface Participant {
-      id: string
-      name: string
-      status: 'waiting' | 'recording' | 'done'
-      transcriptReady?: boolean
-    }
-    ```
-  - [ ] Create `src/types/transcript.ts`:
-    ```typescript
-    export interface Transcript {
-      participantName?: string
-      text: string
-      duration?: number
-    }
-    ```
-  - [ ] Update imports in: Session.vue, ParticipantsList.vue, TranscriptView.vue
-
-- [ ] **Create constants file** `src/lib/constants.ts`:
-  ```typescript
-  export const TIMER_DEFAULT_DURATION = 120 // seconds
-  export const AUDIO_MIME_TYPE = 'audio/webm;codecs=opus'
-  export const MAX_AUDIO_SIZE = 25 * 1024 * 1024 // 25MB for Whisper
-  ```
-  - [ ] Update usage in: TalkSession.vue
-
-- [ ] **Add window type declarations** `src/types/window.d.ts`:
-  ```typescript
-  declare global {
-    interface Window {
-      webkitAudioContext?: typeof AudioContext
-    }
-  }
-  export {}
-  ```
-  - [ ] Remove type assertion from TalkSession.vue
-
-- [ ] **Optional: Extract reusable composables** (if time permits)
-  - [ ] `src/composables/useClipboard.ts` - Copy-to-clipboard functionality
-  - [ ] `src/composables/useFileDownload.ts` - File download functionality
+**Prerequisites**: Set up Pusher Channels account (see [SERVICE_SETUP.md](SERVICE_SETUP.md))
 
 ### 5.1 Pusher Integration Setup
 - [ ] Create `src/lib/pusher-client.ts`
@@ -759,20 +740,20 @@ These limits are fine for local testing. Production deployments may need a paid 
   - [ ] Event handling
   - [ ] Cleanup on unmount
 
-### 5.3 Real-time State Sync (Basic Features Only)
+### 5.3 Real-time State Sync (MVP Features Only)
 - [ ] Integrate Pusher with session store (useSession)
 - [ ] Broadcast local events to channel:
-  - [ ] `talk-started` / `talk-stopped` events
   - [ ] `user-joined` / `user-left` events
+  - [ ] `timer-started` / `timer-stopped` events
   - [ ] Participant status updates (`waiting`, `recording`, `done`)
 - [ ] Update local state from remote events
 - [ ] Handle race conditions (optimistic UI updates)
 - [ ] Write integration tests:
-  - [ ] Talk session sync across clients
+  - [ ] Timer sync across clients
   - [ ] Participant join/leave sync
   - [ ] Participant status updates
 
-**Note**: Transcript sync (`transcript-ready` event) will be implemented in Phase 7 after AI integration is complete, ensuring we can test with real transcription data.
+**Note**: Transcript real-time sync (`transcript-ready` event) is **NOT required for MVP** - will be implemented in Phase 7 if needed post-launch.
 
 ---
 
@@ -873,7 +854,9 @@ These limits are fine for local testing. Production deployments may need a paid 
 
 ---
 
-## Phase 7: Complete Real-time Features (Transcript Sync)
+## Phase 7: Complete Real-time Features (Transcript Sync) - *POST-MVP*
+
+**Status**: ⚠️ **NOT REQUIRED FOR MVP** - Team can wait until all participants finish recording, then view all transcripts at once.
 
 **Prerequisites**: Phase 5 (basic Pusher setup) and Phase 6 (AI transcription) must be complete.
 
@@ -1012,7 +995,9 @@ These limits are fine for local testing. Production deployments may need a paid 
 
 ---
 
-## Phase 10: Testing & Quality Assurance
+## Phase 10: Testing & Quality Assurance - *POST-MVP*
+
+**Status**: ⚠️ **NOT REQUIRED FOR MVP** - Manual testing with real team is sufficient for initial validation.
 
 ### 10.1 Unit Test Coverage
 - [ ] Achieve >80% coverage for:
@@ -1071,7 +1056,9 @@ These limits are fine for local testing. Production deployments may need a paid 
 
 ---
 
-## Phase 11: Deployment
+## Phase 11: Deployment - *POST-MVP*
+
+**Status**: ⚠️ **NOT REQUIRED FOR MVP** - Test on Netlify dev server first, deploy to production after validation.
 
 ### 11.1 Pre-Deployment Checklist
 - [ ] All tests passing
