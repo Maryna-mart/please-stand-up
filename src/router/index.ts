@@ -74,7 +74,8 @@ router.beforeEach(async to => {
         if (backendSession.passwordRequired) {
           // Password-protected session - only ask for password if not the leader (creator)
           // Leaders don't need to re-enter password since they just created the session
-          const isLeader = userId.value === backendSession.leaderId
+          const { userName } = useSession()
+          const isLeader = userName.value === backendSession.leaderName
           if (!isLeader) {
             // Non-leader participant needs to re-enter password
             // Keep cache (don't call leaveSession) so we can verify they're rejoining

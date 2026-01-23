@@ -71,10 +71,8 @@ import JoinSessionCard from '../components/JoinSessionCard.vue'
 
 const route = useRoute()
 const errorMessage = ref('')
-const createCardRef = ref()
-const joinCardRef = ref()
 
-const sessionId = computed(() => route.query.sessionId as string | undefined)
+const sessionId = computed(() => (route.query.sessionId as string) || '')
 const hasSessionId = computed(() => !!sessionId.value)
 
 onMounted(() => {
