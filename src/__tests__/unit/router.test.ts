@@ -59,7 +59,13 @@ function createTestRouter(): Router {
       if (sessionId === 'invalid-session') {
         throw new Error('Session not found')
       }
-      return { id: sessionId, leaderName: 'Test', participants: [], createdAt: Date.now(), passwordRequired: false }
+      return {
+        id: sessionId,
+        leaderName: 'Test',
+        participants: [],
+        createdAt: Date.now(),
+        passwordRequired: false,
+      }
     }),
   }))
 

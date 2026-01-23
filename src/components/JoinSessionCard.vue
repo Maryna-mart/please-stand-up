@@ -22,10 +22,7 @@
           ]"
           required
         />
-        <p
-          v-if="form.name && !isNameValid"
-          class="mt-2 text-xs text-red-600"
-        >
+        <p v-if="form.name && !isNameValid" class="mt-2 text-xs text-red-600">
           Name must be 1-50 characters with no HTML or control characters
         </p>
       </div>
@@ -127,9 +124,7 @@ const isSessionIdValid = computed(() =>
 )
 
 const isPasswordValid = computed(() =>
-  form.value.password
-    ? validatePasswordStrength(form.value.password)
-    : true
+  form.value.password ? validatePasswordStrength(form.value.password) : true
 )
 
 const formValid = computed(
@@ -152,7 +147,8 @@ const handleSubmit = async () => {
     )
     await router.push(`/session/${form.value.sessionId}`)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to join session'
+    const message =
+      error instanceof Error ? error.message : 'Failed to join session'
     emit('error', message)
   } finally {
     isLoading.value = false

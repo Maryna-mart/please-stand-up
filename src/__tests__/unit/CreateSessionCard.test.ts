@@ -258,7 +258,8 @@ describe('CreateSessionCard', () => {
 
       const button = wrapper.find('button[type="submit"]')
       // Form should be valid and ready to submit (disabled attr should be empty or not exist)
-      const isEnabled = !button.attributes('disabled') || button.attributes('disabled') === ''
+      const isEnabled =
+        !button.attributes('disabled') || button.attributes('disabled') === ''
       expect(isEnabled).toBe(true)
     })
 
@@ -279,7 +280,9 @@ describe('CreateSessionCard', () => {
       await wrapper.vm.$nextTick()
 
       // Should not show password error for valid password
-      expect(wrapper.text()).not.toContain('Password must be at least 8 characters')
+      expect(wrapper.text()).not.toContain(
+        'Password must be at least 8 characters'
+      )
     })
   })
 

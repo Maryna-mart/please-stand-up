@@ -59,7 +59,7 @@ const handler: Handler = async event => {
     }
 
     // Retrieve session from storage
-    const session = getSession(sessionId)
+    const session = await getSession(sessionId)
 
     if (!session) {
       return {

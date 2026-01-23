@@ -12,7 +12,7 @@ vi.mock('@/composables/useSession', () => ({
 
 // Mock the session API
 vi.mock('@/lib/session-api', () => ({
-  joinSession: vi.fn(async (payload) => {
+  joinSession: vi.fn(async payload => {
     return {
       sessionId: payload.sessionId,
       userId: 'user-456',
@@ -129,7 +129,7 @@ describe('JoinSessionCard', () => {
       })
 
       const buttons = wrapper.findAll('button')
-      const backButton = buttons.find((b) => b.text().includes('Back'))
+      const backButton = buttons.find(b => b.text().includes('Back'))
       expect(backButton).toBeDefined()
     })
   })
@@ -243,7 +243,9 @@ describe('JoinSessionCard', () => {
 
       const button = wrapper.find('button[type="submit"]')
       // When enabled, disabled attribute should be empty string or not exist
-      expect(!button.attributes('disabled') || button.attributes('disabled') === '').toBe(true)
+      expect(
+        !button.attributes('disabled') || button.attributes('disabled') === ''
+      ).toBe(true)
     })
 
     it('should show error for invalid name', async () => {
@@ -307,7 +309,9 @@ describe('JoinSessionCard', () => {
 
       const button = wrapper.find('button[type="submit"]')
       // When enabled, disabled attribute should be empty string or not exist
-      expect(!button.attributes('disabled') || button.attributes('disabled') === '').toBe(true)
+      expect(
+        !button.attributes('disabled') || button.attributes('disabled') === ''
+      ).toBe(true)
     })
   })
 
@@ -438,7 +442,7 @@ describe('JoinSessionCard', () => {
       })
 
       const buttons = wrapper.findAll('button')
-      const backButton = buttons.find((b) => b.text().includes('Back'))
+      const backButton = buttons.find(b => b.text().includes('Back'))
 
       if (backButton) {
         await backButton.trigger('click')

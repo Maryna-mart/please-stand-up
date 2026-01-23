@@ -22,10 +22,7 @@
           ]"
           required
         />
-        <p
-          v-if="form.name && !isNameValid"
-          class="mt-2 text-xs text-red-600"
-        >
+        <p v-if="form.name && !isNameValid" class="mt-2 text-xs text-red-600">
           Name must be 1-50 characters with no HTML or control characters
         </p>
       </div>
@@ -75,10 +72,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../composables/useSession'
-import {
-  validateUserName,
-  validatePasswordStrength,
-} from '../lib/sanitize'
+import { validateUserName, validatePasswordStrength } from '../lib/sanitize'
 
 const router = useRouter()
 const { createSession } = useSession()
@@ -96,9 +90,7 @@ const isNameValid = computed(() =>
 )
 
 const isPasswordValid = computed(() =>
-  form.value.password
-    ? validatePasswordStrength(form.value.password)
-    : true
+  form.value.password ? validatePasswordStrength(form.value.password) : true
 )
 
 const formValid = computed(
@@ -122,7 +114,8 @@ const handleSubmit = async () => {
     )
     await router.push(`/session/${session.id}`)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create session'
+    const message =
+      error instanceof Error ? error.message : 'Failed to create session'
     emit('error', message)
   } finally {
     isLoading.value = false

@@ -1,7 +1,7 @@
 /**
  * Redis Client Wrapper
  * Handles session storage with automatic TTL expiration
- * Currently uses in-memory storage, but can be easily upgraded to Upstash Redis
+ * Uses Upstash Redis for persistent storage across function invocations
  */
 
 interface SessionData {
@@ -13,44 +13,83 @@ interface SessionData {
     name: string
   }>
   createdAt: number
-  expiresAt: number
 }
 
-interface SessionDataWithoutExpiry {
-  id: string
-  leaderName: string
-  passwordHash?: string
-  participants: Array<{
-    id: string
-    name: string
-  }>
-  createdAt: number
+const SESSION_TTL_SECONDS = 4 * 60 * 60 // 4 hours in seconds
+
+// Upstash Redis configuration
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN
+const REDIS_TIMEOUT = parseInt(process.env.UPSTASH_REDIS_TIMEOUT_MS || '5000')
+
+if (!REDIS_URL || !REDIS_TOKEN) {
+  console.warn(
+    '[Redis] Upstash Redis credentials not configured. Sessions will not persist.'
+  )
 }
-
-const SESSION_TTL_MS = 4 * 60 * 60 * 1000 // 4 hours
-
-// In-memory session store (temporary - will use Upstash Redis in production)
-const sessionStore = new Map<string, SessionData>()
 
 /**
- * Set a session in Redis
+ * Make a request to Upstash Redis REST API
+ */
+async function redisRequest<T>(command: string[]): Promise<T> {
+  if (!REDIS_URL || !REDIS_TOKEN) {
+    throw new Error('Upstash Redis credentials not configured')
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REDIS_TIMEOUT)
+
+    const response = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(command),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorData = (await response.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >
+      throw new Error(
+        `Redis error (${response.status}): ${(errorData.error as string) || response.statusText}`
+      )
+    }
+
+    const data = (await response.json()) as Record<string, T>
+    return data.result
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Redis request timeout (${REDIS_TIMEOUT}ms)`)
+    }
+    throw error
+  }
+}
+
+/**
+ * Set a session in Redis with TTL
  * @param sessionId - Unique session identifier
  * @param data - Session data
  * @returns true if successful
  */
-export function setSession(
+export async function setSession(
   sessionId: string,
-  data: SessionDataWithoutExpiry
-): boolean {
+  data: SessionData
+): Promise<boolean> {
   try {
-    const now = Date.now()
-    const expiresAt = now + SESSION_TTL_MS
-
-    sessionStore.set(sessionId, {
-      ...data,
-      expiresAt,
-    })
-
+    await redisRequest<string>([
+      'SET',
+      `session:${sessionId}`,
+      JSON.stringify(data),
+      'EX',
+      SESSION_TTL_SECONDS.toString(),
+    ])
     return true
   } catch (error) {
     console.error('[Redis] Error setting session:', error)
@@ -63,26 +102,20 @@ export function setSession(
  * @param sessionId - Unique session identifier
  * @returns Session data or null if not found or expired
  */
-export function getSession(sessionId: string): SessionDataWithoutExpiry | null {
+export async function getSession(
+  sessionId: string
+): Promise<SessionData | null> {
   try {
-    const session = sessionStore.get(sessionId)
+    const result = await redisRequest<string | null>([
+      'GET',
+      `session:${sessionId}`,
+    ])
 
-    if (!session) {
+    if (!result) {
       return null
     }
 
-    const now = Date.now()
-
-    // Check if expired
-    if (session.expiresAt < now) {
-      sessionStore.delete(sessionId)
-      return null
-    }
-
-    // Return without the expiry time
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { expiresAt: _expiresAt, ...data } = session
-    return data
+    return JSON.parse(result) as SessionData
   } catch (error) {
     console.error('[Redis] Error getting session:', error)
     return null
@@ -95,34 +128,35 @@ export function getSession(sessionId: string): SessionDataWithoutExpiry | null {
  * @param data - Partial session data to merge
  * @returns true if successful
  */
-export function updateSession(
+export async function updateSession(
   sessionId: string,
-  data: Partial<SessionDataWithoutExpiry>
-): boolean {
+  data: Partial<SessionData>
+): Promise<boolean> {
   try {
-    const existing = sessionStore.get(sessionId)
+    // Get existing session
+    const existing = await getSession(sessionId)
 
     if (!existing) {
       return false
     }
 
-    const now = Date.now()
-
-    // Check if expired
-    if (existing.expiresAt < now) {
-      sessionStore.delete(sessionId)
-      return false
-    }
-
-    // Merge data
+    // Merge data (never override id or createdAt)
     const updated: SessionData = {
       ...existing,
       ...data,
-      id: existing.id, // Never override ID
-      expiresAt: existing.expiresAt, // Preserve original expiry
+      id: existing.id,
+      createdAt: existing.createdAt,
     }
 
-    sessionStore.set(sessionId, updated)
+    // Set updated session
+    await redisRequest<string>([
+      'SET',
+      `session:${sessionId}`,
+      JSON.stringify(updated),
+      'EX',
+      SESSION_TTL_SECONDS.toString(),
+    ])
+
     return true
   } catch (error) {
     console.error('[Redis] Error updating session:', error)
@@ -135,9 +169,10 @@ export function updateSession(
  * @param sessionId - Session identifier
  * @returns true if deleted, false if not found
  */
-export function deleteSession(sessionId: string): boolean {
+export async function deleteSession(sessionId: string): Promise<boolean> {
   try {
-    return sessionStore.delete(sessionId)
+    const result = await redisRequest<number>(['DEL', `session:${sessionId}`])
+    return result > 0
   } catch (error) {
     console.error('[Redis] Error deleting session:', error)
     return false
@@ -149,21 +184,17 @@ export function deleteSession(sessionId: string): boolean {
  * @param sessionId - Session identifier
  * @returns true if session exists and is not expired
  */
-export function sessionExists(sessionId: string): boolean {
-  const session = sessionStore.get(sessionId)
-
-  if (!session) {
+export async function sessionExists(sessionId: string): Promise<boolean> {
+  try {
+    const result = await redisRequest<number>([
+      'EXISTS',
+      `session:${sessionId}`,
+    ])
+    return result > 0
+  } catch (error) {
+    console.error('[Redis] Error checking session existence:', error)
     return false
   }
-
-  const now = Date.now()
-
-  if (session.expiresAt < now) {
-    sessionStore.delete(sessionId)
-    return false
-  }
-
-  return true
 }
 
 /**
@@ -173,14 +204,20 @@ export function sessionExists(sessionId: string): boolean {
  * @param participantName - Participant name
  * @returns true if successful
  */
-export function addParticipant(
+export async function addParticipant(
   sessionId: string,
   participantId: string,
   participantName: string
-): boolean {
+): Promise<boolean> {
+  const session = await getSession(sessionId)
+
+  if (!session) {
+    return false
+  }
+
   return updateSession(sessionId, {
     participants: [
-      ...(getSession(sessionId)?.participants || []),
+      ...session.participants,
       { id: participantId, name: participantName },
     ],
   })
@@ -191,26 +228,9 @@ export function addParticipant(
  * @param sessionId - Session identifier
  * @returns Number of participants or 0 if session not found
  */
-export function getParticipantCount(sessionId: string): number {
-  const session = getSession(sessionId)
+export async function getParticipantCount(sessionId: string): Promise<number> {
+  const session = await getSession(sessionId)
   return session?.participants.length || 0
-}
-
-/**
- * Cleanup expired sessions (should be called periodically)
- */
-export function cleanupExpiredSessions(): number {
-  const now = Date.now()
-  let deletedCount = 0
-
-  for (const [sessionId, session] of sessionStore.entries()) {
-    if (session.expiresAt < now) {
-      sessionStore.delete(sessionId)
-      deletedCount++
-    }
-  }
-
-  return deletedCount
 }
 
 /**
@@ -219,52 +239,14 @@ export function cleanupExpiredSessions(): number {
  */
 export async function isRedisHealthy(): Promise<boolean> {
   try {
-    // In-memory store is always healthy
-    // In production with Upstash, this would ping Redis
+    if (!REDIS_URL || !REDIS_TOKEN) {
+      return false
+    }
+
+    await redisRequest<string>(['PING'])
     return true
   } catch (error) {
     console.error('[Redis] Health check failed:', error)
     return false
   }
-}
-
-/**
- * Get store statistics (for monitoring/testing)
- */
-export function getStoreStats(): {
-  totalSessions: number
-  activeSessions: number
-  expiredSessions: number
-} {
-  const now = Date.now()
-  let activeSessions = 0
-  let expiredSessions = 0
-
-  for (const session of sessionStore.values()) {
-    if (session.expiresAt >= now) {
-      activeSessions++
-    } else {
-      expiredSessions++
-    }
-  }
-
-  return {
-    totalSessions: sessionStore.size,
-    activeSessions,
-    expiredSessions,
-  }
-}
-
-/**
- * Reset store (for testing only)
- */
-export function resetStore(): void {
-  sessionStore.clear()
-}
-
-/**
- * Get store size (for testing)
- */
-export function getStoreSize(): number {
-  return sessionStore.size
 }

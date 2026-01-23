@@ -157,7 +157,7 @@ const handler: Handler = async event => {
     }
 
     // Retrieve session
-    const session = getSession(sessionId)
+    const session = await getSession(sessionId)
 
     if (!session) {
       return {
@@ -235,7 +235,7 @@ const handler: Handler = async event => {
       },
     ]
 
-    const updateSuccess = updateSession(sessionId, {
+    const updateSuccess = await updateSession(sessionId, {
       participants: updatedParticipants,
     })
 

@@ -191,7 +191,7 @@ const handler: Handler = async event => {
       createdAt,
     }
 
-    const sessionStored = setSession(sessionId, sessionData)
+    const sessionStored = await setSession(sessionId, sessionData)
 
     if (!sessionStored) {
       console.error('[create-session] Failed to store session in Redis')
