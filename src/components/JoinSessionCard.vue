@@ -1,6 +1,17 @@
 <template>
   <div class="bg-white rounded-lg shadow-lg p-8">
     <h2 class="text-2xl font-bold text-gray-900 mb-6">Join Session</h2>
+
+    <div
+      v-if="isReauth"
+      class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+    >
+      <p class="text-sm text-blue-800">
+        <strong>Session reload detected.</strong> Please re-enter your password
+        to continue.
+      </p>
+    </div>
+
     <form @submit.prevent="handleSubmit">
       <div class="mb-6">
         <label
@@ -73,7 +84,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+/* eslint-disable no-undef */
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import {
@@ -98,6 +110,54 @@ const form = ref({
   name: '',
   sessionId: props.initialSessionId,
   password: '',
+})
+
+// Detect if this is a password re-auth scenario (session reload)
+// Only true if:
+// 1. The URL has ?requirePassword=true
+// 2. The sessionId in URL matches the cached session (not stale)
+// 3. There's a valid cached session (not empty)
+const isReauth = computed(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const hasRequirePasswordFlag = urlParams.get('requirePassword') === 'true'
+
+  // Check if cache is empty - if so, this is a stale requirePassword param
+  const cachedSession = localStorage.getItem('standup_session')
+  const cachedUserId = localStorage.getItem('standup_user_id')
+
+  // Parse the cached session to get the session ID
+  let cachedSessionId: string | null = null
+  if (cachedSession) {
+    try {
+      const parsed = JSON.parse(cachedSession)
+      cachedSessionId = parsed.id
+    } catch {
+      // Invalid JSON, treat as no cache
+      return false
+    }
+  }
+
+  // Only show re-auth if we have the flag AND a valid cached session
+  // AND the session IDs match (not a different session)
+  return (
+    hasRequirePasswordFlag &&
+    !!cachedSession &&
+    !!cachedUserId &&
+    cachedSessionId === props.initialSessionId
+  )
+})
+
+// Pre-fill name and focus password field on re-auth
+onMounted(() => {
+  if (isReauth.value) {
+    const storedName = localStorage.getItem('standup_user_name')
+    if (storedName) {
+      form.value.name = storedName
+    }
+    // Focus password input instead of name input
+    const passwordInput = document.getElementById('joinPassword')
+    passwordInput?.focus()
+  }
 })
 
 const isNameValid = computed(() =>

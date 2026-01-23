@@ -10,6 +10,8 @@
 -
  [x] 3.5: Security (XSS, validation, sanitization)
 -
+ [x] 3.6: Password Protection (PBKDF2, strength validation, timing-safe comparison)
+-
  [x] 4: Backend (Netlify Functions + Upstash Redis)
 -
  [x] 5: Real-time (Pusher - user join/leave, timer, status)
@@ -25,6 +27,41 @@
  [ ] 10: Testing & Deployment - *Post-MVP*
 
 **Current**: 162 tests passing, 93.93% coverage
+
+---
+
+## Phase 3.6: Password Protection ✅ **COMPLETED**
+
+### Overview
+Sessions can be optionally protected with passwords using PBKDF2 hashing and timing-safe comparison.
+
+### Implementation Details
+- **Frontend**:
+  - CreateSessionCard: Optional password input with validation
+  - JoinSessionCard: Optional password input with validation
+  - Real-time strength feedback (minimum 8 characters)
+  - [src/components/CreateSessionCard.vue](src/components/CreateSessionCard.vue)
+  - [src/components/JoinSessionCard.vue](src/components/JoinSessionCard.vue)
+
+- **Backend**:
+  - Password hashing: PBKDF2 (100K iterations)
+  - Timing-safe comparison to prevent timing attacks
+  - Server-side validation on join
+  - Error responses: 401 for wrong password, 400 for missing password on protected sessions
+
+- **Utilities**:
+  - [src/lib/password-utils.ts](src/lib/password-utils.ts) - Hashing & comparison
+  - [src/lib/sanitize.ts](src/lib/sanitize.ts) - Strength validation
+
+### Testing ✅
+- [x] Password strength validation tests
+- [x] PBKDF2 hashing tests
+- [x] Timing-safe comparison tests
+- [x] Create session with password
+- [x] Join with correct password
+- [x] Reject wrong password
+- [x] Require password for protected sessions
+- [x] Full flow integration tests
 
 ---
 
@@ -178,8 +215,8 @@ SENDGRID_API_KEY=your_key
 # Security
 SESSION_SECRET=random_32_byte_string
 Success Criteria (MVP)
-✅ Phases 1-5 complete
- Phases 6, 8, 9.4 complete
+✅ Phases 1-5 + 3.6 (Password Protection) complete
+ Phases 6, 8 complete
  >80% test coverage maintained
  E2E tests passing
  Tested with 5+ person standup
@@ -187,6 +224,17 @@ Success Criteria (MVP)
  Transcription >80% accuracy
  No security vulnerabilities
  Monthly cost <$10
+
+Features Implemented
+✅ Session creation & management
+✅ Real-time updates via Pusher
+✅ Password protection (PBKDF2)
+✅ Rate limiting
+✅ Input validation & XSS prevention
+✅ localStorage persistence
+✅ Audio recording (120s timer)
+✅ Real-time participant status
+
 Postponed (Post-MVP)
 Phase 9: Real-time transcript sync
 Phase 10: Comprehensive testing and Production deployment

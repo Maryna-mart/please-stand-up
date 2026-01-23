@@ -1,5 +1,7 @@
 ---
+name: commit-squash-push
 description: Squash recent commits and push to remote
+disable-model-invocation: true
 ---
 
 Squash recent commits into one and push to remote following these steps:

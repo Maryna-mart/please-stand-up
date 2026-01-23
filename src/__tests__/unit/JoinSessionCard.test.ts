@@ -476,4 +476,176 @@ describe('JoinSessionCard', () => {
       expect(router.currentRoute.value.params.id).toBe(sessionId)
     })
   })
+
+  describe('Password Re-auth Detection (isReauth)', () => {
+    beforeEach(() => {
+      // Clear localStorage before each test
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it('should NOT show re-auth banner when cache is empty even with ?requirePassword=true', async () => {
+      // This tests the fix for the bug where stale ?requirePassword=true lingered
+      const wrapper = mount(JoinSessionCard, {
+        props: {
+          initialSessionId: 'session-123',
+        },
+        global: {
+          plugins: [router],
+          stubs: {
+            teleport: true,
+          },
+        },
+      })
+
+      // Simulate stale URL param from previous session
+      window.history.replaceState(
+        {},
+        '',
+        '/?requirePassword=true&sessionId=session-123'
+      )
+
+      // Verify cache is empty
+      expect(localStorage.getItem('standup_session')).toBeNull()
+      expect(localStorage.getItem('standup_user_id')).toBeNull()
+
+      // The re-auth banner should NOT appear
+      const banner = wrapper.find('[class*="bg-blue-50"]')
+      expect(banner.exists()).toBe(false)
+    })
+
+    it('should show re-auth banner when ?requirePassword=true AND cache exists', async () => {
+      // Set up cached session
+      localStorage.setItem(
+        'standup_session',
+        JSON.stringify({ id: 'session-123' })
+      )
+      localStorage.setItem('standup_user_id', 'user-123')
+      localStorage.setItem('standup_user_name', 'Alice')
+
+      // Simulate password re-auth scenario
+      window.history.replaceState(
+        {},
+        '',
+        '/?requirePassword=true&sessionId=session-123'
+      )
+
+      const wrapper = mount(JoinSessionCard, {
+        props: {
+          initialSessionId: 'session-123',
+        },
+        global: {
+          plugins: [router],
+          stubs: {
+            teleport: true,
+          },
+        },
+      })
+
+      // The re-auth banner should appear
+      const banner = wrapper.find('[class*="bg-blue-50"]')
+      expect(banner.exists()).toBe(true)
+      expect(wrapper.text()).toContain('Session reload detected')
+    })
+
+    it('should NOT show re-auth banner when cache exists but sessionId is missing', async () => {
+      // Set up cached session with different ID
+      localStorage.setItem(
+        'standup_session',
+        JSON.stringify({ id: 'old-session' })
+      )
+      localStorage.setItem('standup_user_id', 'user-123')
+
+      // Simulate password re-auth with different session
+      window.history.replaceState(
+        {},
+        '',
+        '/?requirePassword=true&sessionId=new-session'
+      )
+
+      const wrapper = mount(JoinSessionCard, {
+        props: {
+          initialSessionId: 'new-session',
+        },
+        global: {
+          plugins: [router],
+          stubs: {
+            teleport: true,
+          },
+        },
+      })
+
+      // The re-auth banner should NOT appear (different session)
+      const banner = wrapper.find('[class*="bg-blue-50"]')
+      expect(banner.exists()).toBe(false)
+    })
+
+    it('should pre-fill name from cache during re-auth', async () => {
+      // Set up cached session with user name
+      localStorage.setItem(
+        'standup_session',
+        JSON.stringify({ id: 'session-123' })
+      )
+      localStorage.setItem('standup_user_id', 'user-123')
+      localStorage.setItem('standup_user_name', 'Alice')
+
+      window.history.replaceState(
+        {},
+        '',
+        '/?requirePassword=true&sessionId=session-123'
+      )
+
+      const wrapper = mount(JoinSessionCard, {
+        props: {
+          initialSessionId: 'session-123',
+        },
+        global: {
+          plugins: [router],
+          stubs: {
+            teleport: true,
+          },
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      // Name should be pre-filled from localStorage
+      const nameInput = wrapper.find('input[id="participantName"]')
+      expect((nameInput.element as HTMLInputElement).value).toBe('Alice')
+    })
+
+    it('should NOT pre-fill name when re-auth flag false but cache exists', async () => {
+      // Set up cached session
+      localStorage.setItem(
+        'standup_session',
+        JSON.stringify({ id: 'session-123' })
+      )
+      localStorage.setItem('standup_user_id', 'user-123')
+      localStorage.setItem('standup_user_name', 'Bob')
+
+      // No re-auth flag in URL
+      window.history.replaceState({}, '', '/?sessionId=session-123')
+
+      const wrapper = mount(JoinSessionCard, {
+        props: {
+          initialSessionId: 'session-123',
+        },
+        global: {
+          plugins: [router],
+          stubs: {
+            teleport: true,
+          },
+        },
+      })
+
+      await wrapper.vm.$nextTick()
+
+      // Name should NOT be pre-filled (not a re-auth scenario)
+      const nameInput = wrapper.find('input[id="participantName"]')
+      expect((nameInput.element as HTMLInputElement).value).toBe('')
+    })
+  })
 })

@@ -1,5 +1,7 @@
 ---
+name: commit
 description: Create a git commit with current changes
+disable-model-invocation: true
 ---
 
 Create a git commit following these steps:

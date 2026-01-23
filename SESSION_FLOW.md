@@ -140,10 +140,10 @@ Show session room
 
 ---
 
-### Flow 3: Page Reload While in Session
+### Flow 3: Page Reload While in Session (Non-Password-Protected)
 
 ```
-User in: /session/abc123def
+User in: /session/abc123def (no password protection)
   Has in cache: {session.id=abc123def, userId='xyz'}
     ↓
 User: Reloads page
@@ -160,10 +160,57 @@ Browser: Navigate to /session/abc123def
 Router guard:
   ✓ Backend: Validates abc123def exists? YES
   ✓ Cache: session.id === 'abc123def' && userId set? YES
+  ✓ Participant: Is userId in participants list? YES ← NEW
+  ✓ Password: Is session password-protected? NO ← NEW
     ↓
 Allow direct access (no redirect)
     ↓
 Show same session room
+```
+
+### Flow 3b: Page Reload While in Password-Protected Session
+
+```
+User in: /session/abc123def (password-protected)
+  Has in cache: {session.id=abc123def, userId='xyz', userName='Alice'}
+    ↓
+User: Reloads page
+    ↓
+App.vue: mounted → initializeSessionFromCache()
+    ↓
+Load from localStorage:
+  ✓ standup_session → currentSession
+  ✓ standup_user_id → currentUserId
+  ✓ standup_user_name → currentUserName
+    ↓
+Browser: Navigate to /session/abc123def
+    ↓
+Router guard:
+  ✓ Backend: Validates abc123def exists? YES
+  ✓ Cache: session.id === 'abc123def' && userId set? YES
+  ✓ Participant: Is userId in participants list? YES
+  ✗ Password: Is session password-protected? YES
+    ↓
+Redirect: /?sessionId=abc123def&requirePassword=true
+    ↓
+Home page: Shows JoinSessionCard with:
+  - sessionId pre-filled: 'abc123def'
+  - Name pre-filled from cache: 'Alice'
+  - Password field auto-focused
+  - Blue info banner: "Session reload detected. Please re-enter your password to continue."
+    ↓
+User: Enters password "SecurePass123", clicks "Join Session"
+    ↓
+joinSession() API call:
+  - Backend verifies password hash matches
+  - Returns existing userId (user already participant)
+    ↓
+Navigate to: /session/abc123def
+    ↓
+Router guard:
+  ✓ All checks pass (userId valid, password just verified)
+    ↓
+Show: Same session room
 ```
 
 ---
@@ -344,7 +391,9 @@ Show: /session/xyz789
 ### Router Guard
 - ✓ Always check backend first
 - ✓ Then check local cache
-- ✓ Redirect if mismatch
+- ✓ **Verify userId is in participants list** ← NEW (prevents localStorage spoofing)
+- ✓ **For password-protected sessions, redirect to password re-entry** ← NEW
+- ✓ Redirect if any validation fails
 
 ---
 
@@ -393,6 +442,130 @@ Submit: joinSession(xyz789, name, password)
 Result: Joins xyz789 instead
 ```
 
+### Case 5: Spoofed userId on Reload (NEW)
+```
+User in: /session/abc123 (password-protected)
+  Has cached: userId='user-abc-123'
+  State: Reload page
+    ↓
+Attacker: Opens DevTools, edits localStorage
+  Changes: standup_user_id to 'user-xyz-999'
+  This userId doesn't exist in session
+    ↓
+Browser: Reload page
+    ↓
+Router guard:
+  ✓ Backend: Session exists? YES
+  ✓ Cache: Has session & userId? YES
+  ✗ Participant: Is userId in participants? NO
+    ↓
+Router guard action:
+  1. Clear cache (leaveSession())
+  2. Redirect to /?sessionId=abc123
+    ↓
+Result: Attacker redirected to join card, can't spoof access
+  Must enter correct password to rejoin
+```
+
+---
+
+## Password Protection
+
+### Overview
+Sessions can be optionally protected with a password. Password validation happens at two levels:
+1. **Client-side**: Real-time validation as user types
+2. **Server-side**: Verification during `joinSession()` API call
+
+### Implementation Details
+
+**Password Strength Requirements:**
+- Minimum 8 characters
+- Enforced on both create and join forms
+- User gets real-time feedback
+
+**Server-Side Security:**
+- Passwords hashed with PBKDF2 (100K iterations)
+- Hash stored in Redis (not plaintext)
+- Timing-safe comparison to prevent timing attacks
+- Backend rejects wrong password with error code 401
+
+**Client-Side Validation:**
+- `validatePasswordStrength()` in [src/lib/sanitize.ts](src/lib/sanitize.ts)
+- Input validation before API calls
+- Error messages shown to user
+
+### User Flows with Password
+
+#### Flow A: Create Protected Session
+```
+User: Creates session with password "SecurePass123"
+  ↓
+Client: Validates password strength ✓
+  ↓
+API: createSession({leaderName, password})
+  ↓
+Backend: Hash password with PBKDF2
+  ↓
+Store: {sessionId, passwordRequired: true, passwordHash: '...'}
+  ↓
+User: Immediately in session (leader doesn't need password)
+```
+
+#### Flow B: Join Protected Session
+```
+User: Receives link to protected session
+  ↓
+Router: Valid session but not cached → redirect to join card
+  ↓
+JoinSessionCard: Shows password input (marked "if required")
+  ↓
+User: Enters name + password, submits
+  ↓
+API: joinSession({sessionId, participantName, password})
+  ↓
+Backend: Verify password hash using timing-safe comparison
+  ├─ Correct → User joins session ✓
+  └─ Wrong → Returns 401 error, user shown error message
+```
+
+#### Flow C: Join Without Password
+```
+User: Joins unprotected session
+  ↓
+Password field: Left empty (optional)
+  ↓
+API: joinSession({sessionId, participantName})
+  ↓
+Backend: Skip password validation
+  ↓
+Result: User joins successfully ✓
+```
+
+### Error Handling
+
+**Frontend:**
+- Invalid password format → Real-time validation error below input
+- Wrong password on join → Error toast/notification shown
+
+**Backend:**
+- Session not found → 404 error
+- Password required but not provided → 401 error
+- Wrong password → 401 error with "Incorrect password" message
+- All errors caught and converted to user-friendly messages
+
+### Testing
+
+Password protection is fully tested in:
+- [src/__tests__/unit/useSession.test.ts:200-286](src/__tests__/unit/useSession.test.ts#L200-L286)
+  - ✓ Create session with password
+  - ✓ Join with correct password
+  - ✓ Reject wrong password
+  - ✓ Require password for protected session
+- [src/__tests__/unit/password-utils.test.ts](src/__tests__/unit/password-utils.test.ts)
+  - ✓ Password validation strength
+  - ✓ PBKDF2 hashing
+  - ✓ Timing-safe comparison
+
 ---
 
 ## Testing Coverage
@@ -430,6 +603,6 @@ Result: Joins xyz789 instead
 - [x] Unit tests written
 - [x] Router tests written
 - [x] E2E tests written
-- [ ] Password protection (post-MVP)
+- [x] Password protection implemented (PBKDF2 hashing, validation)
 - [ ] Multi-tab sync (future)
 - [ ] Session history DB (future)

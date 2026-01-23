@@ -49,13 +49,39 @@ router.beforeEach(async to => {
 
     // Always check if session is valid on backend first
     try {
-      await getSession(sessionId)
+      const backendSession = await getSession(sessionId)
       // Session is valid on backend
 
       // Check if user has this session cached
       if (session.value?.id === sessionId && userId.value) {
-        // User has this session cached and backend confirms it's valid
-        // Allow direct access
+        // Verify userId is a valid participant in the backend session
+        const isValidParticipant = backendSession.participants.some(
+          p => p.id === userId.value
+        )
+
+        if (!isValidParticipant) {
+          // userId is not valid - clear cache and redirect to join
+          const { leaveSession } = useSession()
+          leaveSession()
+          return {
+            name: 'Home',
+            query: { sessionId },
+            replace: true,
+          }
+        }
+
+        // userId is valid, now check if session is password-protected
+        if (backendSession.passwordRequired) {
+          // Password-protected session - redirect to join to re-enter password
+          // Keep cache (don't call leaveSession) so we can verify they're rejoining
+          return {
+            name: 'Home',
+            query: { sessionId, requirePassword: 'true' },
+            replace: true,
+          }
+        }
+
+        // User is confirmed participant in non-protected session
         return true
       }
 

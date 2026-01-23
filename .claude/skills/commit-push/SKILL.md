@@ -1,5 +1,7 @@
 ---
+name: commit-push
 description: Create a git commit and push to remote
+disable-model-invocation: true
 ---
 
 Create a git commit and push to remote following these steps:

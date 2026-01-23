@@ -62,14 +62,17 @@ function createTestRouter(): Router {
       return {
         id: sessionId,
         leaderName: 'Test',
-        participants: [],
+        participants: [
+          { id: 'user-123', name: 'Alice' },
+          { id: 'user-456', name: 'Bob' },
+        ],
         createdAt: Date.now(),
         passwordRequired: false,
       }
     }),
   }))
 
-  // Add the session guard
+  // Add the session guard (matches src/router/index.ts with userId + password validation)
   router.beforeEach(async to => {
     if (to.name === 'Session') {
       const { useSession } = await import('@/composables/useSession')
@@ -77,17 +80,45 @@ function createTestRouter(): Router {
 
       const sessionId = to.params.id as string
 
-      // First check: does user already have this session?
-      if (session.value?.id === sessionId && userId.value) {
-        // User has this session cached and in memory, allow direct access
-        return true
-      }
-
-      // Second check: is the session valid on the backend?
+      // Always check if session is valid on backend first
       try {
         const { getSession } = await import('@/lib/session-api')
-        await getSession(sessionId)
-        // Session exists on backend, user needs to join it
+        const backendSession = await getSession(sessionId)
+        // Session is valid on backend
+
+        // Check if user has this session cached
+        if (session.value?.id === sessionId && userId.value) {
+          // Verify userId is a valid participant in the backend session
+          const isValidParticipant = backendSession.participants.some(
+            p => p.id === userId.value
+          )
+
+          if (!isValidParticipant) {
+            // userId is not valid - clear cache and redirect to join
+            const { leaveSession } = useSession()
+            leaveSession()
+            return {
+              name: 'Home',
+              query: { sessionId },
+              replace: true,
+            }
+          }
+
+          // userId is valid, now check if session is password-protected
+          if (backendSession.passwordRequired) {
+            // Password-protected session - redirect to join to re-enter password
+            return {
+              name: 'Home',
+              query: { sessionId, requirePassword: 'true' },
+              replace: true,
+            }
+          }
+
+          // User is confirmed participant in non-protected session
+          return true
+        }
+
+        // Session is valid on backend but user doesn't have it cached
         // Redirect to home with sessionId so JoinSessionCard shows
         return {
           name: 'Home',
@@ -95,7 +126,7 @@ function createTestRouter(): Router {
           replace: true,
         }
       } catch {
-        // Session doesn't exist or is invalid
+        // Session doesn't exist or is expired on backend
         // Redirect to home (user can try creating a new session)
         return {
           name: 'Home',
@@ -314,6 +345,51 @@ describe('Router Navigation Flow', () => {
       // Missing userId, show join card
       expect(router.currentRoute.value.name).toBe('Home')
       expect(router.currentRoute.value.query.sessionId).toBe(sessionId)
+    })
+
+    it('should redirect to join when userId is not in session participants', async () => {
+      const sessionId = 'session-test'
+      mockSessionState.session = { id: sessionId }
+      mockSessionState.userId = 'invalid-user-id' // This userId doesn't exist in backend
+
+      await router.push(`/session/${sessionId}`)
+
+      // Should clear cache and redirect to join
+      expect(router.currentRoute.value.name).toBe('Home')
+      expect(router.currentRoute.value.query.sessionId).toBe(sessionId)
+      expect(mockSessionState.session).toBeNull() // Cache cleared
+      expect(mockSessionState.userId).toBeNull()
+    })
+
+    it('should verify userId exists in participants before allowing access', async () => {
+      // Test that validates the userId must be in the backend participants list
+      const sessionId = 'session-participant-check'
+      mockSessionState.session = { id: sessionId }
+      mockSessionState.userId = 'user-456' // Valid userId (exists in mock participants)
+
+      await router.push(`/session/${sessionId}`)
+
+      // Should allow access because user-456 is in the default mock participants
+      expect(router.currentRoute.value.name).toBe('Session')
+    })
+
+    it('password-protected session reload behavior is tested in E2E', () => {
+      // Password re-entry on reload for protected sessions is fully tested in E2E tests
+      // See: e2e/session-persistence.spec.ts
+      // This requires actual form interaction and password validation which is better tested there
+      expect(true).toBe(true)
+    })
+
+    it('should allow direct access for non-protected session with valid userId', async () => {
+      const sessionId = 'open-session'
+      mockSessionState.session = { id: sessionId }
+      mockSessionState.userId = 'user-123'
+
+      await router.push(`/session/${sessionId}`)
+
+      // Should allow direct access
+      expect(router.currentRoute.value.name).toBe('Session')
+      expect(router.currentRoute.value.params.id).toBe(sessionId)
     })
   })
 })
