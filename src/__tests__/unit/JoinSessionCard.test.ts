@@ -135,26 +135,7 @@ describe('JoinSessionCard', () => {
   })
 
   describe('Session ID Display', () => {
-    it('should display the session ID from prop', () => {
-      const sessionId = 'session-abc123'
-      const wrapper = mount(JoinSessionCard, {
-        props: {
-          initialSessionId: sessionId,
-        },
-        global: {
-          plugins: [router],
-          stubs: {
-            teleport: true,
-          },
-        },
-      })
-
-      // Session ID should be displayed in the div with id="sessionId"
-      const sessionIdDiv = wrapper.find('div[id="sessionId"]')
-      expect(sessionIdDiv.text()).toContain(sessionId)
-    })
-
-    it('should display session ID in monospace font', () => {
+    it('should not display session ID field', () => {
       const wrapper = mount(JoinSessionCard, {
         props: {
           initialSessionId: 'session-123',
@@ -168,41 +149,7 @@ describe('JoinSessionCard', () => {
       })
 
       const sessionIdDiv = wrapper.find('div[id="sessionId"]')
-      expect(sessionIdDiv.classes()).toContain('font-mono')
-    })
-
-    it('should show "No session ID" when not provided', () => {
-      const wrapper = mount(JoinSessionCard, {
-        props: {
-          initialSessionId: '',
-        },
-        global: {
-          plugins: [router],
-          stubs: {
-            teleport: true,
-          },
-        },
-      })
-
-      const sessionIdDiv = wrapper.find('div[id="sessionId"]')
-      expect(sessionIdDiv.text()).toContain('No session ID')
-    })
-
-    it('should not have an input field for session ID', () => {
-      const wrapper = mount(JoinSessionCard, {
-        props: {
-          initialSessionId: 'session-123',
-        },
-        global: {
-          plugins: [router],
-          stubs: {
-            teleport: true,
-          },
-        },
-      })
-
-      const sessionIdInput = wrapper.find('input[id="sessionId"]')
-      expect(sessionIdInput.exists()).toBe(false)
+      expect(sessionIdDiv.exists()).toBe(false)
     })
   })
 
@@ -503,24 +450,6 @@ describe('JoinSessionCard', () => {
   })
 
   describe('Session ID from URL', () => {
-    it('should use session ID from prop (from route query param)', () => {
-      const sessionIdFromUrl = 'abc-def-ghi'
-      const wrapper = mount(JoinSessionCard, {
-        props: {
-          initialSessionId: sessionIdFromUrl,
-        },
-        global: {
-          plugins: [router],
-          stubs: {
-            teleport: true,
-          },
-        },
-      })
-
-      const sessionIdDiv = wrapper.find('div[id="sessionId"]')
-      expect(sessionIdDiv.text()).toContain(sessionIdFromUrl)
-    })
-
     it('should submit with session ID from prop', async () => {
       const sessionId = 'test-session-123'
       const wrapper = mount(JoinSessionCard, {
