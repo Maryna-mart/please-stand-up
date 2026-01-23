@@ -127,22 +127,17 @@ SESSION_SECRET=your_random_32_char_secret
 ```
 
 
-## Project Structure
+## Documentation
 
-```
-please-stand-up/
-├── src/
-│   ├── components/      # Vue components
-│   ├── composables/     # Vue composables
-│   ├── lib/             # Utility libraries
-│   ├── router/          # Vue Router config
-│   ├── types/           # TypeScript types
-│   ├── views/           # Page components
-│   └── __tests__/       # Unit & integration tests
-├── netlify/functions/   # Serverless functions
-├── e2e/                 # E2E tests
-└── IMPLEMENTATION.md    # Detailed implementation plan
-```
+| Document | Purpose |
+|----------|---------|
+| **[SESSION_FLOW.md](SESSION_FLOW.md)** | Session architecture, routing logic, user flows (8 scenarios) |
+| **[IMPLEMENTATION.md](IMPLEMENTATION.md)** | Development phases, current progress, roadmap |
+| **[USER_JOURNEY.md](USER_JOURNEY.md)** | High-level user experience (6-step flow) |
+| **[package.json](package.json)** | Dependencies, tech stack versions, scripts |
+
+**Development Guidelines:**
+- Commit format: Use `/commit` skill (enforces Conventional Commits, 50-char limit)
 
 ## Service Limits & Scaling
 
@@ -256,8 +251,3 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 - **Problem**: Real-time sync not working
 - **Solution**: Verify `VITE_PUSHER_APP_KEY` and `VITE_PUSHER_CLUSTER` in `.env`
 
-## Documentation
-
-- [CLAUDE.md](CLAUDE.md) - Technical specifications
-- [IMPLEMENTATION.md](IMPLEMENTATION.md) - Detailed implementation plan with checklist
-- [SERVICE_SETUP.md](SERVICE_SETUP.md) - Guide for setting up third-party services
