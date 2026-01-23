@@ -22,6 +22,10 @@ vi.mock('@/composables/useSession', () => ({
     get userId() {
       return { value: mockSessionState.userId }
     },
+    leaveSession: () => {
+      mockSessionState.session = null
+      mockSessionState.userId = null
+    },
   }),
 }))
 
@@ -65,6 +69,7 @@ function createTestRouter(): Router {
         participants: [
           { id: 'user-123', name: 'Alice' },
           { id: 'user-456', name: 'Bob' },
+          { id: 'user-789', name: 'Charlie' },
         ],
         createdAt: Date.now(),
         passwordRequired: false,
