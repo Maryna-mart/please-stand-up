@@ -437,6 +437,63 @@ describe('useSession', () => {
     })
   })
 
+  describe('Session persistence on reload', () => {
+    it('should persist userId and userName to localStorage', async () => {
+      await createSession('Alice')
+
+      // Check all three keys are stored
+      expect(localStorage.getItem('standup_session')).toBeDefined()
+      expect(localStorage.getItem('standup_user_id')).toBeDefined()
+      expect(localStorage.getItem('standup_user_name')).toBe('Alice')
+    })
+
+    it('should persist userId when joining session', async () => {
+      const created = await createSession('Alice')
+      leaveSession()
+
+      await joinSession(created.id, 'Bob')
+
+      // Check userId and userName are stored
+      expect(localStorage.getItem('standup_user_id')).toBeDefined()
+      expect(localStorage.getItem('standup_user_name')).toBe('Bob')
+    })
+
+    it('should restore session state on initialization from cache', async () => {
+      const created = await createSession('Alice')
+      const { session: sessionBefore, userId: userIdBefore, userName: userNameBefore } = useSession()
+
+      expect(sessionBefore.value?.id).toBe(created.id)
+      expect(userIdBefore.value).toBeDefined()
+      expect(userNameBefore.value).toBe('Alice')
+
+      // Simulate app reload by clearing state and reinitializing
+      leaveSession()
+      const { initializeSessionFromCache } = useSession()
+      initializeSessionFromCache()
+
+      const { session: sessionAfter, userId: userIdAfter, userName: userNameAfter } = useSession()
+
+      // Should restore all values
+      expect(sessionAfter.value?.id).toBe(created.id)
+      expect(userIdAfter.value).toBe(userIdBefore.value)
+      expect(userNameAfter.value).toBe('Alice')
+    })
+
+    it('should clear localStorage when leaving session', async () => {
+      await createSession('Alice')
+
+      expect(localStorage.getItem('standup_session')).toBeDefined()
+      expect(localStorage.getItem('standup_user_id')).toBeDefined()
+      expect(localStorage.getItem('standup_user_name')).toBeDefined()
+
+      leaveSession()
+
+      expect(localStorage.getItem('standup_session')).toBeNull()
+      expect(localStorage.getItem('standup_user_id')).toBeNull()
+      expect(localStorage.getItem('standup_user_name')).toBeNull()
+    })
+  })
+
   // Debug test to verify mock is working
   describe('Mock API Verification', () => {
     it('mock should store sessions', async () => {

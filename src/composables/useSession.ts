@@ -19,6 +19,8 @@ import {
   type JoinSessionPayload,
 } from '@/lib/session-api'
 const STORAGE_KEY = 'standup_session'
+const USER_ID_KEY = 'standup_user_id'
+const USER_NAME_KEY = 'standup_user_name'
 
 // Reactive session state
 const currentSession = ref<Session | null>(null)
@@ -155,6 +157,9 @@ export const leaveSession = (): void => {
   currentSession.value = null
   currentUserId.value = null
   currentUserName.value = null
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(USER_ID_KEY)
+  localStorage.removeItem(USER_NAME_KEY)
 }
 
 /**
@@ -275,8 +280,15 @@ export const initializeSessionFromCache = (): void => {
   const cachedSession = loadFromLocalStorage()
   if (cachedSession) {
     currentSession.value = cachedSession
-    // Note: userId and userName will be set when the user interacts with the session
-    // This is just a cache restore - actual validation happens via backend API
+    // Restore userId and userName from localStorage
+    const storedUserId = localStorage.getItem(USER_ID_KEY)
+    const storedUserName = localStorage.getItem(USER_NAME_KEY)
+    if (storedUserId) {
+      currentUserId.value = storedUserId
+    }
+    if (storedUserName) {
+      currentUserName.value = storedUserName
+    }
   }
 }
 
@@ -315,6 +327,13 @@ export const useSession = () => {
 const saveToLocalStorage = (session: Session): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    // Also persist userId and userName for restoration on reload
+    if (currentUserId.value) {
+      localStorage.setItem(USER_ID_KEY, currentUserId.value)
+    }
+    if (currentUserName.value) {
+      localStorage.setItem(USER_NAME_KEY, currentUserName.value)
+    }
   } catch (error) {
     console.error('Failed to save session to localStorage:', error)
   }
