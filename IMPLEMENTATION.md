@@ -240,7 +240,10 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - [ ] Connect GitHub repository to Netlify
 - [ ] Configure build command: `npm run build`
 - [ ] Configure publish directory: `dist`
-- [ ] Set environment variables (see below)
+- [ ] Generate and set production environment variables:
+  - [ ] `SESSION_SECRET`: Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  - [ ] `PORTKEY_API_KEY`: Your production Portkey key
+  - [ ] All other API keys (Pusher, Upstash, etc.)
 - [ ] Enable automatic deploys on main branch
 - [ ] Configure custom domain (optional)
 - [ ] Enable HTTPS/TLS (automatic)
