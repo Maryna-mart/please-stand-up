@@ -290,8 +290,8 @@ describe('Session.vue', () => {
 
       // Find buttons in the session controls
       const buttons = wrapper.findAll('button')
-      const generateButton = buttons.find(
-        btn => btn.text().includes('Generate Summary')
+      const generateButton = buttons.find(btn =>
+        btn.text().includes('Generate Summary')
       )
       expect(generateButton).toBeDefined()
 

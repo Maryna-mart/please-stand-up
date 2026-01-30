@@ -141,10 +141,7 @@ export async function uploadAudio(
     } catch (error) {
       clearTimeout(timeoutId)
 
-      if (
-        error instanceof Error &&
-        error.name === 'AbortError'
-      ) {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Transcription request timeout')
       }
 
@@ -227,10 +224,7 @@ export async function generateSummary(
     } catch (error) {
       clearTimeout(timeoutId)
 
-      if (
-        error instanceof Error &&
-        error.name === 'AbortError'
-      ) {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Summary generation request timeout')
       }
 
