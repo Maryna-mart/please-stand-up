@@ -57,6 +57,13 @@
       </div>
     </div>
 
+    <!-- Summary Error -->
+    <div v-if="summaryError" class="max-w-7xl mx-auto mt-6">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p class="text-red-800 text-sm">{{ summaryError }}</p>
+      </div>
+    </div>
+
     <!-- Full-Width Summary Section (shown when ready) -->
     <div v-if="showSummary" class="max-w-7xl mx-auto mt-6">
       <div class="bg-white rounded-lg shadow p-6">
@@ -89,6 +96,10 @@ import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import { usePusher } from '../composables/usePusher'
+import {
+  generateSummary as generateSummaryAPI,
+  parseAPIError,
+} from '../lib/ai-api'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
@@ -124,6 +135,7 @@ const summary = ref('')
 const showSummary = ref(false)
 const linkCopied = ref(false)
 const isGeneratingSummary = ref(false)
+const summaryError = ref('')
 
 const canGenerateSummary = computed(() => transcripts.value.length > 0)
 
@@ -198,11 +210,28 @@ const copySessionLink = () => {
 }
 
 const generateSummary = async () => {
+  if (transcripts.value.length === 0) {
+    return
+  }
+
   try {
     isGeneratingSummary.value = true
-    // TODO: Call API to generate summary
-    summary.value = 'Summary generation not yet implemented'
+    summaryError.value = ''
+
+    // Call API to generate summary from transcripts
+    const result = await generateSummaryAPI(
+      sessionId.value,
+      transcripts.value as Array<{
+        participantName: string
+        text: string
+      }>
+    )
+
+    summary.value = result.text
     showSummary.value = true
+  } catch (error) {
+    const apiError = parseAPIError(error)
+    summaryError.value = apiError.message
   } finally {
     isGeneratingSummary.value = false
   }
