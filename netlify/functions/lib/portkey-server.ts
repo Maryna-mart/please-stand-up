@@ -4,9 +4,9 @@
  * Handles API requests with error handling, retry logic, and logging
  */
 
-import OpenAI from 'openai'
-import FormData from 'form-data'
+import OpenAI, { toFile } from 'openai'
 import fetch from 'node-fetch'
+import FormData from 'form-data'
 
 // Configuration constants
 const MAX_RETRIES = 3
@@ -126,59 +126,83 @@ export async function transcribeAudio(
       language: language || 'auto-detect',
     })
 
-    // Use form-data for proper multipart encoding in Node.js
-    const form = new FormData()
-    form.append('file', audioBuffer, {
-      filename: `audio.${audioFormat}`,
-      contentType: `audio/${audioFormat}`,
+    // Create a File-like object from the buffer using OpenAI's toFile helper
+    const file = await toFile(audioBuffer, `audio.${audioFormat}`, {
+      type: `audio/${audioFormat}`,
     })
-    form.append('model', 'whisper-1')
-    if (language && language !== 'auto-detect') {
-      form.append('language', language)
-    }
-    form.append('prompt', 'This is a team standup meeting transcript.')
 
-    console.log('[Portkey] Sending request to Portkey API', {
+    const requestParams = {
+      file: file,
+      model: 'whisper-1',
+      language: language && language !== 'auto-detect' ? language : undefined,
+      prompt: 'This is a team standup meeting transcript.',
+    }
+
+    console.log('[Portkey] Request params:', {
+      model: requestParams.model,
+      language: requestParams.language,
+      prompt: requestParams.prompt,
       fileName: `audio.${audioFormat}`,
-      mimeType: `audio/${audioFormat}`,
+      fileSize: audioBuffer.length,
     })
 
-    // Use node-fetch with form-data directly (node-fetch v2 supports streams)
-    const apiKey = process.env.PORTKEY_API_KEY!
-
-    // Pass form stream directly - node-fetch v2 handles it properly
-    const response = await fetch(
-      'https://api.portkey.ai/v1/audio/transcriptions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          ...form.getHeaders(),
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        body: form as any,
+    // First, try raw fetch to debug the exact error response
+    try {
+      const form = new FormData()
+      form.append('file', audioBuffer, {
+        filename: `audio.${audioFormat}`,
+        contentType: `audio/${audioFormat}`,
+      })
+      form.append('model', 'whisper-1')
+      if (language && language !== 'auto-detect') {
+        form.append('language', language)
       }
-    )
+      form.append('prompt', 'This is a team standup meeting transcript.')
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      const error = new Error(
-        `Portkey API error: ${response.status} ${response.statusText} - ${errorText}`
-      ) as ErrorWithCode
-      error.status = response.status
+      console.log('[Portkey] Making raw fetch request to debug error')
+
+      const rawResponse = await fetch(
+        'https://api.portkey.ai/v1/audio/transcriptions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.PORTKEY_API_KEY}`,
+            ...form.getHeaders(),
+          },
+          body: form,
+        }
+      )
+
+      const responseText = await rawResponse.text()
+
+      console.log('[Portkey] Raw response details:', {
+        status: rawResponse.status,
+        statusText: rawResponse.statusText,
+        headers: Object.fromEntries(rawResponse.headers.entries()),
+        bodyLength: responseText.length,
+        body: responseText,
+      })
+
+      if (!rawResponse.ok) {
+        throw new Error(
+          `Portkey API error: ${rawResponse.status} - ${responseText}`
+        )
+      }
+
+      const result = JSON.parse(responseText)
+
+      console.log('[Portkey] Transcription successful', {
+        textLength: result.text.length,
+        language: language || 'detected',
+      })
+
+      return {
+        text: result.text,
+        language: language || 'en',
+      }
+    } catch (error) {
+      console.error('[Portkey] Transcription failed:', error)
       throw error
-    }
-
-    const data = (await response.json()) as { text: string }
-
-    console.log('[Portkey] Transcription successful', {
-      textLength: data.text.length,
-      language: language || 'detected',
-    })
-
-    return {
-      text: data.text,
-      language: language || 'en', // Default to English if not specified
     }
   })
 }
