@@ -105,8 +105,7 @@ interface Transcript {
 
 const route = useRoute()
 const router = useRouter()
-const { leaveSession: performLeaveSession, session: sessionData } =
-  useSession()
+const { leaveSession: performLeaveSession, session: sessionData } = useSession()
 const { subscribeToSession, unsubscribeFromSession } = usePusher()
 
 const sessionId = computed(() => route.params.id as string)

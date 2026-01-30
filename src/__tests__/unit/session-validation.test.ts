@@ -217,7 +217,6 @@ describe('session validation', () => {
       s.expiresAt = new Date(Date.now() - 1000) // 1 second ago
       expect(validateSession(s)).toBeNull()
     })
-
   })
 
   describe('getSafeSessionId', () => {

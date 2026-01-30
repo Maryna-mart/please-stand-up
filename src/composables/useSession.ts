@@ -87,6 +87,9 @@ export const createSession = async (
   currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
+  // Mark as authenticated so router doesn't ask for password on first redirect
+  sessionStorage.setItem('session_authenticated', 'true')
+
   return session
 }
 
@@ -145,6 +148,9 @@ export const joinSession = async (
   currentUserName.value = sanitizedName
   saveToLocalStorage(session)
 
+  // Mark as authenticated so router doesn't ask for password on first redirect
+  sessionStorage.setItem('session_authenticated', 'true')
+
   return session
 }
 
@@ -158,6 +164,8 @@ export const leaveSession = (): void => {
   localStorage.removeItem(STORAGE_KEY)
   localStorage.removeItem(USER_ID_KEY)
   localStorage.removeItem(USER_NAME_KEY)
+  // Clear authentication flag when leaving
+  sessionStorage.removeItem('session_authenticated')
 }
 
 /**

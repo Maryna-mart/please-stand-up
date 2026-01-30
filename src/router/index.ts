@@ -70,16 +70,23 @@ router.beforeEach(async to => {
 
         // userId is valid, now check if session is password-protected
         if (backendSession.passwordRequired) {
-          // Password-protected session - everyone must re-enter password
-          // Keep cache (don't call leaveSession) so we can verify they're rejoining
-          return {
-            name: 'Home',
-            query: { sessionId, requirePassword: 'true' },
-            replace: true,
+          // Check if user just authenticated (created or joined session)
+          const isAuthenticated =
+            sessionStorage.getItem('session_authenticated') === 'true'
+
+          if (!isAuthenticated) {
+            // Not recently authenticated - ask for password (page reload or rejoin)
+            // Keep cache (don't call leaveSession) so we can verify they're rejoining
+            return {
+              name: 'Home',
+              query: { sessionId, requirePassword: 'true' },
+              replace: true,
+            }
           }
+          // User just created/joined - allow access without re-entering password
         }
 
-        // User is confirmed participant in non-protected session
+        // User is confirmed participant - allow access
         return true
       }
 
