@@ -242,11 +242,50 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - [ ] Configure publish directory: `dist`
 - [ ] Generate and set production environment variables:
   - [ ] `SESSION_SECRET`: Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-  - [ ] `PORTKEY_API_KEY`: Your production Portkey key
-  - [ ] All other API keys (Pusher, Upstash, etc.)
+  - [ ] `PORTKEY_API_KEY`: Production Portkey API key
+  - [ ] `UPSTASH_REDIS_REST_URL`: Production Redis URL
+  - [ ] `UPSTASH_REDIS_REST_TOKEN`: Production Redis token
+  - [ ] `VITE_PUSHER_APP_KEY`: Production Pusher key
+  - [ ] `VITE_PUSHER_CLUSTER`: Production Pusher cluster
+  - [ ] `PUSHER_APP_ID`: Production Pusher app ID
+  - [ ] `PUSHER_SECRET`: Production Pusher secret
+  - [ ] `SENDGRID_API_KEY`: SendGrid API key
+  - [ ] `SENDGRID_FROM_EMAIL`: Verified sender email
+  - [ ] `SENDGRID_FROM_NAME`: Email display name
 - [ ] Enable automatic deploys on main branch
 - [ ] Configure custom domain (optional)
 - [ ] Enable HTTPS/TLS (automatic)
+
+### Production API Keys Setup
+**⚠️ IMPORTANT**: Create separate accounts/apps for production (do NOT reuse dev credentials)
+
+#### Pusher Production App
+1. Go to https://dashboard.pusher.com/
+2. Create new app: `please-stand-up-prod` (or your project name)
+3. Select cluster (same or better coverage as dev, e.g., `eu`, `us2`)
+4. Get credentials from App Keys tab:
+   - `PUSHER_APP_ID` (app_id)
+   - `VITE_PUSHER_APP_KEY` (key) - same as dev
+   - `PUSHER_SECRET` (secret)
+   - `VITE_PUSHER_CLUSTER` (cluster name)
+5. **Free tier covers most small teams**: 200K msgs/day, 100 concurrent connections
+
+#### Portkey Production
+1. Go to https://app.portkey.ai/
+2. Create production API key (separate from dev)
+3. Ensure OpenAI + Anthropic integrations are active
+4. Set `PORTKEY_API_KEY` to production key
+
+#### Upstash Redis Production
+1. Go to https://console.upstash.com/
+2. Create production database (separate from dev)
+3. Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+
+#### SendGrid Production
+1. Go to https://app.sendgrid.com/
+2. Same API key works for dev + prod (use same key)
+3. Verify production sender email if different from dev
+4. Set `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME`
 
 ### Monitoring & Logging
 - [ ] Set up Netlify Analytics
