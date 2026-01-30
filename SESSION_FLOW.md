@@ -192,6 +192,7 @@ Router guard:
   ✗ Password: Is session password-protected? YES
     ↓
 Redirect: /?sessionId=abc123def&requirePassword=true
+  (All participants must re-enter password on reload - no role exemptions)
     ↓
 Home page: Shows JoinSessionCard with:
   - sessionId pre-filled: 'abc123def'

@@ -64,7 +64,6 @@
     <!-- Session Controls -->
     <div class="max-w-7xl mx-auto mt-8 flex justify-end gap-4">
       <button
-        v-if="isLeader"
         :disabled="!canGenerateSummary || isGeneratingSummary"
         class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition"
         @click="generateSummary"
@@ -106,15 +105,11 @@ interface Transcript {
 
 const route = useRoute()
 const router = useRouter()
-const {
-  leaveSession: performLeaveSession,
-  session: sessionData,
-  userId: currentUserId,
-} = useSession()
+const { leaveSession: performLeaveSession, session: sessionData } =
+  useSession()
 const { subscribeToSession, unsubscribeFromSession } = usePusher()
 
 const sessionId = computed(() => route.params.id as string)
-const isLeader = ref(false)
 const participants = ref<Participant[]>([])
 const transcripts = ref<Transcript[]>([])
 const summary = ref('')
@@ -221,9 +216,6 @@ onMounted(() => {
       transcriptReady: p.status === 'done',
     }))
   }
-
-  // Set isLeader based on session data
-  isLeader.value = sessionData.value?.leaderId === currentUserId.value
 
   subscribeToSession(sessionId.value, {
     onUserJoined: handleUserJoined,

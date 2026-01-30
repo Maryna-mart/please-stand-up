@@ -42,7 +42,6 @@ interface MockSessionData {
   expiresAt: number
   passwordRequired: boolean
   passwordHash?: string
-  leaderId: string
 }
 
 interface CreateSessionPayload {
@@ -79,7 +78,6 @@ vi.mock('@/lib/session-api', () => {
       createdAt,
       expiresAt,
       passwordRequired: !!password,
-      leaderId: userId,
     }
 
     if (password) {
@@ -204,10 +202,11 @@ describe('useSession', () => {
       expect(session.passwordHash).not.toBe('secret123') // Should be hashed
     })
 
-    it('should set creator as leader', async () => {
+    it('should create session with one participant', async () => {
       const session = await createSession('Charlie')
 
-      expect(session.leaderId).toBe(session.participants[0].id)
+      expect(session.participants).toHaveLength(1)
+      expect(session.participants[0].name).toBe('Charlie')
     })
 
     it('should set expiration to 4 hours from now', async () => {
@@ -241,7 +240,6 @@ describe('useSession', () => {
       const state = getSessionState()
       expect(state.currentSession).not.toBeNull()
       expect(state.currentUserName).toBe('Frank')
-      expect(state.isLeader).toBe(true)
     })
   })
 
@@ -300,14 +298,13 @@ describe('useSession', () => {
       expect(joined.participants[0].name).toBe('Alice')
     })
 
-    it('should mark joiner as non-leader', async () => {
+    it('should add joiner to participants list', async () => {
       const created = await createSession('Alice')
       leaveSession()
 
-      await joinSession(created.id, 'Bob')
-      const state = getSessionState()
+      const joined = await joinSession(created.id, 'Bob')
 
-      expect(state.isLeader).toBe(false)
+      expect(joined.participants).toHaveLength(2)
     })
   })
 
@@ -355,7 +352,6 @@ describe('useSession', () => {
       expect(state.currentSession).toBeNull()
       expect(state.currentUserId).toBeNull()
       expect(state.currentUserName).toBeNull()
-      expect(state.isLeader).toBe(false)
     })
   })
 
@@ -414,7 +410,7 @@ describe('useSession', () => {
 
   describe('useSession composable', () => {
     it('should provide reactive session state', async () => {
-      const { session, userName, isLeader } = useSession()
+      const { session, userName } = useSession()
 
       expect(session.value).toBeNull()
 
@@ -422,7 +418,6 @@ describe('useSession', () => {
 
       expect(session.value).not.toBeNull()
       expect(userName.value).toBe('Alice')
-      expect(isLeader.value).toBe(true)
     })
 
     it('should provide all actions', () => {
@@ -512,7 +507,7 @@ describe('useSession', () => {
       // The composable wraps the API response into a Session object
       expect(result.id).toBeDefined()
       expect(result.participants).toBeDefined()
-      expect(result.leaderId).toBeDefined()
+      expect(result.participants).toHaveLength(1)
     })
   })
 })

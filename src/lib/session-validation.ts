@@ -51,9 +51,7 @@ export const isValidSessionStructure = (obj: unknown): obj is Session => {
     !(s.expiresAt instanceof Date) ||
     typeof s.status !== 'string' ||
     !['waiting', 'in-progress', 'completed'].includes(s.status as string) ||
-    !Array.isArray(s.participants) ||
-    typeof s.leaderId !== 'string' ||
-    s.leaderId.length === 0
+    !Array.isArray(s.participants)
   ) {
     return false
   }
@@ -89,13 +87,6 @@ export const validateSession = (session: unknown): Session | null => {
   const s = session as Session
   if (new Date() > s.expiresAt) {
     console.error('Session has expired', s.id)
-    return null
-  }
-
-  // Check consistency: leader must be in participants
-  const leaderExists = s.participants.some(p => p.id === s.leaderId)
-  if (!leaderExists) {
-    console.error('Session leader not in participants', s.id)
     return null
   }
 

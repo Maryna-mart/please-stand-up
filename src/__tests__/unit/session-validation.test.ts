@@ -112,7 +112,6 @@ describe('session validation', () => {
         createdAt: now,
         expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
         status: 'waiting',
-        leaderId: 'user-1',
         participants: [
           {
             id: 'user-1',
@@ -161,12 +160,6 @@ describe('session validation', () => {
       expect(isValidSessionStructure(s)).toBe(false)
     })
 
-    it('should reject session with empty leaderId', () => {
-      const s = createValidSession()
-      s.leaderId = ''
-      expect(isValidSessionStructure(s)).toBe(false)
-    })
-
     it('should accept session with passwordHash', () => {
       const s = createValidSession()
       s.passwordHash = 'hashed_password'
@@ -198,7 +191,6 @@ describe('session validation', () => {
         createdAt: now,
         expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
         status: 'waiting',
-        leaderId: 'user-1',
         participants: [
           {
             id: 'user-1',
@@ -226,11 +218,6 @@ describe('session validation', () => {
       expect(validateSession(s)).toBeNull()
     })
 
-    it('should reject session where leader not in participants', () => {
-      const s = createValidSession()
-      s.leaderId = 'nonexistent-user'
-      expect(validateSession(s)).toBeNull()
-    })
   })
 
   describe('getSafeSessionId', () => {
@@ -320,7 +307,6 @@ describe('session validation', () => {
         createdAt: now.toISOString(),
         expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
         status: 'waiting',
-        leaderId: 'user-1',
         participants: [
           {
             id: 'user-1',
@@ -365,7 +351,6 @@ describe('session validation', () => {
         createdAt: new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString(),
         expiresAt: new Date(now.getTime() - 1000).toISOString(), // 1 second ago
         status: 'waiting',
-        leaderId: 'user-1',
         participants: [
           {
             id: 'user-1',

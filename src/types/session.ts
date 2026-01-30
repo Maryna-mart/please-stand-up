@@ -27,7 +27,6 @@ export interface Session {
   status: SessionStatus
   passwordHash?: string
   participants: Participant[]
-  leaderId: string // User who created the session
   summary?: string
 }
 
@@ -35,7 +34,6 @@ export interface SessionState {
   currentSession: Session | null
   currentUserId: string | null
   currentUserName: string | null
-  isLeader: boolean
 }
 
 // Type guards

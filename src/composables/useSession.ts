@@ -78,7 +78,6 @@ export const createSession = async (
         status: 'waiting',
       },
     ],
-    leaderId: apiResponse.userId,
     passwordHash: password ? '***' : undefined, // Never store actual hash locally
   }
 
@@ -137,7 +136,6 @@ export const joinSession = async (
       joinedAt: now,
       status: 'waiting' as const,
     })),
-    leaderId: apiResponse.participants[0]?.id || apiResponse.userId, // First participant is leader
     passwordHash: password ? '***' : undefined, // Never store actual hash locally
   }
 
@@ -170,7 +168,6 @@ export const getSessionState = (): Readonly<SessionState> => {
     currentSession: currentSession.value,
     currentUserId: currentUserId.value,
     currentUserName: currentUserName.value,
-    isLeader: currentSession.value?.leaderId === currentUserId.value || false,
   } as unknown as Readonly<SessionState>
 }
 
@@ -297,9 +294,6 @@ export const useSession = () => {
   const session = computed(() => currentSession.value)
   const userId = computed(() => currentUserId.value)
   const userName = computed(() => currentUserName.value)
-  const isLeader = computed(
-    () => currentSession.value?.leaderId === currentUserId.value
-  )
   const participants = computed(() => currentSession.value?.participants || [])
 
   return {
@@ -307,7 +301,6 @@ export const useSession = () => {
     session: readonly(session),
     userId: readonly(userId),
     userName: readonly(userName),
-    isLeader: readonly(isLeader),
     participants: readonly(participants),
 
     // Actions

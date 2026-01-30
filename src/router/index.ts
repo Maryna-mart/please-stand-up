@@ -43,7 +43,7 @@ router.beforeEach(async to => {
     const sessionId = to.params.id as string
 
     const { useSession } = await import('../composables/useSession')
-    const { session, userId, userName, leaveSession } = useSession()
+    const { session, userId, leaveSession } = useSession()
     const { getSession } = await import('../lib/session-api')
 
     // Always check if session is valid on backend first
@@ -70,22 +70,16 @@ router.beforeEach(async to => {
 
         // userId is valid, now check if session is password-protected
         if (backendSession.passwordRequired) {
-          // Password-protected session - only ask for password if not the leader (creator)
-          // Leaders don't need to re-enter password since they just created the session
-          const isLeader =
-            userName.value && userName.value === backendSession.leaderName
-          if (!isLeader) {
-            // Non-leader participant needs to re-enter password
-            // Keep cache (don't call leaveSession) so we can verify they're rejoining
-            return {
-              name: 'Home',
-              query: { sessionId, requirePassword: 'true' },
-              replace: true,
-            }
+          // Password-protected session - everyone must re-enter password
+          // Keep cache (don't call leaveSession) so we can verify they're rejoining
+          return {
+            name: 'Home',
+            query: { sessionId, requirePassword: 'true' },
+            replace: true,
           }
         }
 
-        // User is confirmed participant in non-protected session, or is leader of protected session
+        // User is confirmed participant in non-protected session
         return true
       }
 
