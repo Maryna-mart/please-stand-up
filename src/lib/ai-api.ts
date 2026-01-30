@@ -226,4 +226,3 @@ export function parseAPIError(error: unknown): APIError {
     status: 0,
   }
 }
-

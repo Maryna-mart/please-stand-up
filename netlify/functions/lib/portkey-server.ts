@@ -142,6 +142,14 @@ export async function transcribeAudio(
       mimeType: `audio/${audioFormat}`,
     })
 
+    // Convert form to buffer for fetch
+    const formBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = []
+      form.on('data', (chunk: Buffer) => chunks.push(chunk))
+      form.on('end', () => resolve(Buffer.concat(chunks)))
+      form.on('error', reject)
+    })
+
     const apiKey = process.env.PORTKEY_API_KEY!
     const response = await fetch(
       'https://api.portkey.ai/v1/audio/transcriptions',
@@ -151,7 +159,7 @@ export async function transcribeAudio(
           Authorization: `Bearer ${apiKey}`,
           ...form.getHeaders(),
         },
-        body: form,
+        body: formBuffer,
       }
     )
 
