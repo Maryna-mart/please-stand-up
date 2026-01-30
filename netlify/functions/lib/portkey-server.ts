@@ -6,6 +6,7 @@
 
 import OpenAI from 'openai'
 import FormData from 'form-data'
+import fetch from 'node-fetch'
 
 // Configuration constants
 const MAX_RETRIES = 3
@@ -142,14 +143,10 @@ export async function transcribeAudio(
       mimeType: `audio/${audioFormat}`,
     })
 
-    // Convert form to buffer by reading the stream
-    const chunks: Buffer[] = []
-    for await (const chunk of form) {
-      chunks.push(chunk as Buffer)
-    }
-    const formBuffer = Buffer.concat(chunks)
-
+    // Use node-fetch with form-data directly (node-fetch v2 supports streams)
     const apiKey = process.env.PORTKEY_API_KEY!
+
+    // Pass form stream directly - node-fetch v2 handles it properly
     const response = await fetch(
       'https://api.portkey.ai/v1/audio/transcriptions',
       {
@@ -158,7 +155,8 @@ export async function transcribeAudio(
           Authorization: `Bearer ${apiKey}`,
           ...form.getHeaders(),
         },
-        body: formBuffer,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        body: form as any,
       }
     )
 
