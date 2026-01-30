@@ -143,14 +143,17 @@ export async function transcribeAudio(
     })
 
     const apiKey = process.env.PORTKEY_API_KEY!
-    const response = await fetch('https://api.portkey.ai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        ...form.getHeaders(),
-      },
-      body: form,
-    })
+    const response = await fetch(
+      'https://api.portkey.ai/v1/audio/transcriptions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          ...form.getHeaders(),
+        },
+        body: form,
+      }
+    )
 
     if (!response.ok) {
       const errorText = await response.text()
