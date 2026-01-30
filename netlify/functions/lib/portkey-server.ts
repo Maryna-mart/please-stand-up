@@ -4,7 +4,8 @@
  * Handles API requests with error handling, retry logic, and logging
  */
 
-import { Portkey } from '@portkey-ai/node-sdk'
+import OpenAI from 'openai'
+import FormData from 'form-data'
 
 // Configuration constants
 const MAX_RETRIES = 3
@@ -37,22 +38,21 @@ function validateConfig(): void {
     throw new Error('Portkey API key not configured')
   }
 
-  if (!apiKey.startsWith('pk-')) {
-    console.warn('[Portkey] API key does not start with expected prefix')
-  }
+  console.log('[Portkey] API key is configured (length: ' + apiKey.length + ')')
 }
 
 /**
- * Initialize Portkey client
- * @returns Configured Portkey client instance
+ * Initialize OpenAI client configured for Portkey
+ * @returns Configured OpenAI client instance
  */
-function initializePortkey(): Portkey {
+function initializePortkey(): OpenAI {
   validateConfig()
 
   const apiKey = process.env.PORTKEY_API_KEY!
 
-  return new Portkey({
+  return new OpenAI({
     apiKey,
+    baseURL: 'https://api.portkey.ai/v1',
   })
 }
 
@@ -118,8 +118,6 @@ export async function transcribeAudio(
     throw new Error('Audio file exceeds 25MB limit')
   }
 
-  const portkey = initializePortkey()
-
   return withRetry(async () => {
     console.log('[Portkey] Starting transcription for audio', {
       size: audioBuffer.length,
@@ -127,32 +125,51 @@ export async function transcribeAudio(
       language: language || 'auto-detect',
     })
 
-    // Create a File-like object for the API
-    const audioBlob = new Blob([audioBuffer], { type: `audio/${audioFormat}` })
-    const file = new File([audioBlob], `audio.${audioFormat}`, {
-      type: `audio/${audioFormat}`,
+    // Use form-data for proper multipart encoding in Node.js
+    const form = new FormData()
+    form.append('file', audioBuffer, {
+      filename: `audio.${audioFormat}`,
+      contentType: `audio/${audioFormat}`,
+    })
+    form.append('model', 'whisper-1')
+    if (language && language !== 'auto-detect') {
+      form.append('language', language)
+    }
+    form.append('prompt', 'This is a team standup meeting transcript.')
+
+    console.log('[Portkey] Sending request to Portkey API', {
+      fileName: `audio.${audioFormat}`,
+      mimeType: `audio/${audioFormat}`,
     })
 
-    const response = await portkey.audio.transcriptions.create(
-      {
-        file,
-        model: 'whisper-1',
-        language,
-        // Optional: improve accuracy for specific use cases
-        prompt: 'This is a team standup meeting transcript.',
+    const apiKey = process.env.PORTKEY_API_KEY!
+    const response = await fetch('https://api.portkey.ai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        ...form.getHeaders(),
       },
-      {
-        timeout: REQUEST_TIMEOUT_MS,
-      }
-    )
+      body: form,
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      const error = new Error(
+        `Portkey API error: ${response.status} ${response.statusText} - ${errorText}`
+      ) as ErrorWithCode
+      error.status = response.status
+      throw error
+    }
+
+    const data = (await response.json()) as { text: string }
 
     console.log('[Portkey] Transcription successful', {
-      textLength: response.text.length,
+      textLength: data.text.length,
       language: language || 'detected',
     })
 
     return {
-      text: response.text,
+      text: data.text,
       language: language || 'en', // Default to English if not specified
     }
   })
@@ -199,7 +216,7 @@ For each participant, extract:
 
 Format the summary as a structured document with each person as a section.`
 
-    const response = await portkey.messages.create(
+    const response = await portkey.chat.completions.create(
       {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 2048,
@@ -262,6 +279,14 @@ export function handlePortkeyError(error: unknown): {
   status: number
 } {
   const err = error as ErrorWithCode
+
+  // Log the actual error for debugging
+  console.error('[Portkey] Error details:', {
+    message: err.message,
+    status: err.status,
+    code: err.code,
+    stack: err.stack,
+  })
 
   if (err.message?.includes('timeout')) {
     return {

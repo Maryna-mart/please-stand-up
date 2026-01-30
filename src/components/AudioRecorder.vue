@@ -15,9 +15,16 @@
     <!-- Microphone Permission Status -->
     <div
       v-if="microphoneError"
-      class="bg-red-50 border border-red-200 rounded p-3"
+      class="bg-red-50 border border-red-200 rounded p-3 space-y-3"
     >
       <p class="text-red-800 text-sm">{{ microphoneError }}</p>
+      <button
+        v-if="microphoneError.includes('permission denied')"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition text-sm"
+        @click="initializeMicrophone"
+      >
+        🎤 Allow Microphone
+      </button>
     </div>
 
     <!-- Recording Controls -->
@@ -69,6 +76,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { uploadAudio as uploadAudioAPI, parseAPIError } from '../lib/ai-api'
+
+interface Props {
+  sessionId: string
+  participantId: string
+  participantName: string
+}
+
+const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'transcript-ready': [transcript: string]
@@ -181,14 +197,19 @@ const uploadAudio = async () => {
     isTranscribing.value = true
     transcriptionError.value = ''
 
-    // TODO: Implement API call to transcribe
-    // For now, emit a mock transcript
-    const mockTranscript =
-      'Transcription will be implemented with Portkey Whisper API'
-    emit('transcript-ready', mockTranscript)
+    // Upload audio to Portkey Whisper API via Netlify function
+    const result = await uploadAudioAPI(
+      props.sessionId,
+      props.participantId,
+      props.participantName,
+      audioBlob.value,
+      'webm'
+    )
+
+    emit('transcript-ready', result.text)
   } catch (error) {
-    transcriptionError.value =
-      error instanceof Error ? error.message : 'Failed to transcribe audio'
+    const apiError = parseAPIError(error)
+    transcriptionError.value = apiError.message
   } finally {
     isTranscribing.value = false
   }

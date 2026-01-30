@@ -33,9 +33,16 @@
     <!-- Microphone Permission Status -->
     <div
       v-if="microphoneError"
-      class="bg-red-50 border border-red-200 rounded p-3"
+      class="bg-red-50 border border-red-200 rounded p-3 space-y-3"
     >
       <p class="text-red-800 text-sm">{{ microphoneError }}</p>
+      <button
+        v-if="microphoneError.includes('permission denied')"
+        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded transition text-sm"
+        @click="initializeMicrophone"
+      >
+        🎤 Allow Microphone
+      </button>
     </div>
 
     <!-- Main Talk Button -->

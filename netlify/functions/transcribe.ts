@@ -13,7 +13,8 @@ import {
   logPortkeyRequest,
   isPortkeyConfigured,
 } from './lib/portkey-server'
-// import type { AudioFormat } from '../src/lib/portkey-types'
+
+type AudioFormat = 'webm' | 'mp3' | 'mp4' | 'wav'
 
 interface TranscribeResponse {
   success: boolean
@@ -38,10 +39,12 @@ const SUPPORTED_FORMATS: AudioFormat[] = ['webm', 'mp3', 'mp4', 'wav']
 
 /**
  * Parse multipart form data to extract audio file and fields
+ * Handles both raw binary and base64-encoded bodies from Netlify
  */
 async function parseMultipartFormData(
   body: string,
-  contentType: string
+  contentType: string,
+  isBase64: boolean
 ): Promise<{
   fields: Record<string, string>
   audioBuffer: Buffer
@@ -54,50 +57,81 @@ async function parseMultipartFormData(
   // Extract boundary from content-type header
   const boundaryMatch = contentType.match(/boundary=([^;]+)/)
   if (!boundaryMatch) {
+    console.error('[Transcribe] Failed to extract boundary from content-type')
     return null
   }
 
-  const boundary = boundaryMatch[1]
-  const parts = body.split(`--${boundary}`)
+  const boundary = boundaryMatch[1].trim()
+
+  // Decode body if it's base64 encoded by Netlify
+  let bodyBuffer: Buffer
+  try {
+    if (isBase64) {
+      bodyBuffer = Buffer.from(body, 'base64')
+    } else {
+      bodyBuffer = Buffer.from(body, 'utf-8')
+    }
+  } catch (e) {
+    console.error('[Transcribe] Failed to decode body:', e)
+    return null
+  }
+
+  const bodyStr = bodyBuffer.toString('binary')
+  const boundaryBytes = `--${boundary}`
+  const parts = bodyStr.split(boundaryBytes)
 
   const fields: Record<string, string> = {}
   let audioBuffer: Buffer | null = null
   let audioFormat: AudioFormat | null = null
 
   for (const part of parts) {
-    if (part.includes('Content-Disposition: form-data')) {
-      // Parse form field or file
-      const nameMatch = part.match(/name="([^"]+)"/)
-      const fileNameMatch = part.match(/filename="([^"]+)"/)
+    if (!part.includes('Content-Disposition: form-data')) {
+      continue
+    }
 
-      if (nameMatch && !fileNameMatch) {
-        // Regular form field
-        const fieldName = nameMatch[1]
-        const fieldValueMatch = part.match(/\r?\n\r?\n([\s\S]*?)\r?\n/)
-        if (fieldValueMatch) {
-          fields[fieldName] = fieldValueMatch[1]
-        }
-      } else if (fileNameMatch && nameMatch) {
-        // File upload
-        const fileName = fileNameMatch[1]
-        const extMatch = fileName.match(/\.([a-z0-9]+)$/)
+    // Parse form field or file
+    const nameMatch = part.match(/name="([^"]+)"/)
+    const fileNameMatch = part.match(/filename="([^"]+)"/)
 
-        if (extMatch) {
-          const ext = extMatch[1].toLowerCase() as AudioFormat
-          if (SUPPORTED_FORMATS.includes(ext)) {
-            audioFormat = ext
-            // Extract binary file data
-            const dataMatch = part.match(/\r?\n\r?\n([\s\S]*?)\r?\n/)
-            if (dataMatch) {
-              audioBuffer = Buffer.from(dataMatch[1], 'binary')
+    if (nameMatch && !fileNameMatch) {
+      // Regular form field - extract value
+      const headerEndIdx = part.indexOf('\r\n\r\n')
+      if (headerEndIdx !== -1) {
+        let fieldValue = part.substring(headerEndIdx + 4)
+        // Remove trailing CRLF and boundary marker
+        fieldValue = fieldValue.replace(/\r\n$/, '')
+        fields[nameMatch[1]] = fieldValue
+      }
+    } else if (fileNameMatch && nameMatch) {
+      // File upload
+      const fileName = fileNameMatch[1]
+      const extMatch = fileName.match(/\.([a-z0-9]+)$/)
+
+      if (extMatch) {
+        const ext = extMatch[1].toLowerCase() as AudioFormat
+        if (SUPPORTED_FORMATS.includes(ext)) {
+          audioFormat = ext
+          // Extract binary file data
+          const headerEndIdx = part.indexOf('\r\n\r\n')
+          if (headerEndIdx !== -1) {
+            let fileData = part.substring(headerEndIdx + 4)
+            // Remove trailing CRLF
+            if (fileData.endsWith('\r\n')) {
+              fileData = fileData.slice(0, -2)
             }
+            audioBuffer = Buffer.from(fileData, 'binary')
           }
         }
       }
     }
   }
 
+  console.log('[Transcribe] Parsed fields:', Object.keys(fields))
+  console.log('[Transcribe] Audio format:', audioFormat)
+  console.log('[Transcribe] Audio buffer size:', audioBuffer?.length)
+
   if (!audioBuffer || !audioFormat) {
+    console.error('[Transcribe] Failed to extract audio or format')
     return null
   }
 
@@ -172,6 +206,7 @@ const handler: Handler = async event => {
     // Check content type and parse multipart form data
     const contentType = event.headers['content-type'] || ''
     if (!event.body) {
+      console.error('[Transcribe] Request body is empty')
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -181,13 +216,22 @@ const handler: Handler = async event => {
       }
     }
 
-    const parsed = await parseMultipartFormData(event.body, contentType)
+    console.log('[Transcribe] Content-Type:', contentType)
+    console.log('[Transcribe] Body length:', event.body.length)
+    console.log('[Transcribe] Is base64 encoded:', event.isBase64Encoded)
+
+    const parsed = await parseMultipartFormData(
+      event.body,
+      contentType,
+      event.isBase64Encoded || false
+    )
 
     if (!parsed) {
+      console.error('[Transcribe] Failed to parse multipart form data')
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: 'Invalid request format',
+          error: 'Invalid request format - failed to parse multipart data',
           code: 'INVALID_FORMAT',
         } as ErrorResponse),
       }

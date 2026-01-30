@@ -25,6 +25,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "form-data": "^4.0.0",
+    "portkey-ai": "^3.0.1",
     "pusher-js": "^8.4.0",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4"
