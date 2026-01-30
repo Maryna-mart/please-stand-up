@@ -94,6 +94,7 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - [x] Call Whisper API, return transcript + language
 - [x] Error handling: 400 (invalid), 413 (too large), 502 (API fail)
 - [x] Multipart form parsing and session validation
+- [x] **Language Support**: en, de, fr, es, it, pt, ja, zh
 
 ### 6.3 Summarization Function ✅
 - [x] Create `netlify/functions/summarize.ts`
@@ -101,6 +102,7 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - [x] Call Claude with prompt for standup format
 - [x] Return formatted summary with language
 - [x] Error handling and validation
+- [x] **Language Support**: en, de, fr, es, it, pt, ja, zh
 
 ### 6.4 Frontend API ✅
 - [x] Create `src/lib/ai-api.ts`
@@ -193,25 +195,25 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ## Environment Variables
 
+### Local Development
+Create `.env.local` file (in `.gitignore`):
 ```bash
-# Upstash Redis (see SERVICE_SETUP.md)
+PORTKEY_API_KEY=pk-your-actual-key
 UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_token
-
-# Pusher (see SERVICE_SETUP.md)
 VITE_PUSHER_APP_KEY=your_key
 VITE_PUSHER_CLUSTER=your_cluster
 PUSHER_APP_ID=your_id
 PUSHER_SECRET=your_secret
+```
 
-# Portkey
-PORTKEY_API_KEY=your_key
-
-# SendGrid
-SENDGRID_API_KEY=your_key
-
-# Security
-SESSION_SECRET=random_32_byte_string
+### Production (Netlify)
+Set via **Site Settings** → **Build & deploy** → **Environment**:
+- `PORTKEY_API_KEY` - Portkey API key (for Whisper + Claude)
+- `UPSTASH_REDIS_REST_URL` - Redis URL
+- `UPSTASH_REDIS_REST_TOKEN` - Redis token
+- All Pusher keys
+- `SESSION_SECRET` - Random 32-character string
 Success Criteria (MVP)
 ✅ Phases 1-5 + 3.6 (Password Protection) complete
  Phases 6, 8 complete
