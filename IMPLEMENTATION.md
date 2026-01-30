@@ -27,6 +27,8 @@
  [ ] 9.5: E2E Tests - Full transcription flow
 -
  [ ] 10: Testing & Deployment - *Post-MVP*
+-
+ [ ] 11: Documentation & Architecture - *Post-MVP*
 
 **Current**: 238 tests passing, comprehensive coverage
 
@@ -164,6 +166,45 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - Clear session after 4h (Redis TTL)
 - [ ] Add "Delete Session" button (leader only)
 - [ ] Tests: cleanup triggers, deletion
+
+---
+
+## Phase 11: Documentation & Architecture Refactoring ⏳ **PLANNED** (Post-MVP)
+
+### 11.1 Create Comprehensive Architecture Diagram
+- [ ] Add visual system architecture diagram to IMPLEMENTATION.md
+- [ ] Show all services: Frontend (Vue), Backend (Netlify), Redis, Pusher, Portkey, SendGrid
+- [ ] Document data flow for key operations:
+  - Session creation → Redis storage → Pusher broadcast
+  - Audio recording → Portkey/Whisper → Transcript storage
+  - Summary generation → Claude → Email delivery
+- [ ] Include security layers (PBKDF2, rate limiting, XSS prevention)
+
+### 11.2 Consolidate Service Documentation
+- [ ] Identify redundancy between SERVICE_SETUP.md and IMPLEMENTATION.md
+- [ ] Consolidate external service setup (Pusher, Portkey, Upstash, SendGrid)
+- [ ] Create single source of truth for:
+  - Environment variables (dev vs production)
+  - Free tier limits and cost estimates
+  - Setup instructions with URLs
+- [ ] Update README.md to point to consolidated docs
+- [ ] Remove or archive redundant documentation
+
+### 11.3 Service Integration Summary
+- [ ] Add comprehensive table showing:
+  - Service name, purpose, free tier limits, production requirements
+  - Dev vs Production credentials (which to separate)
+  - Cost estimates at different scales (7-person, 50-person, 200-person teams)
+  - Setup URLs and key generation commands
+
+### 11.4 Architecture Documentation
+- [ ] Document complete request/response flow for each major feature
+- [ ] Add sequence diagrams for:
+  - Session creation and joining
+  - Real-time participant sync
+  - Audio transcription flow
+  - Summary generation and email delivery
+- [ ] Document error handling strategy across all layers
 
 ---
 
