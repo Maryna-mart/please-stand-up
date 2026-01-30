@@ -23,7 +23,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/__tests__/setup.ts'],
-    exclude: ['node_modules', 'dist', 'e2e', '**/e2e/**'],
+    exclude: ['node_modules', 'dist', 'e2e', '**/e2e/**', 'netlify/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -33,6 +33,7 @@ export default defineConfig({
         '*.config.ts',
         'dist/',
         'e2e/',
+        'netlify/',
       ],
     },
   },

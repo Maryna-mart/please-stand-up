@@ -24,6 +24,8 @@
  -
  [ ] 9: Real-time Transcripts - *Post-MVP*
 -
+ [ ] 9.5: E2E Tests - Full transcription flow
+-
  [ ] 10: Testing & Deployment - *Post-MVP*
 
 **Current**: 238 tests passing, comprehensive coverage
@@ -190,6 +192,73 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - Unit: Vitest, >80% coverage, `src/__tests__/unit/`
 - Integration: Vitest, `src/__tests__/integration/`
 - E2E: Playwright, `e2e/`
+
+---
+
+## Phase 9.5: E2E Tests (End-to-End) ⏳ **PENDING**
+
+### Full Transcription Flow Tests
+- [ ] Playwright E2E test: Create session → Record → Transcribe
+- [ ] Verify transcript appears with participant name
+- [ ] Test timeout handling (mock slow API)
+- [ ] Test retry logic (mock failed requests)
+- [ ] Test error display for failed transcription
+- [ ] Test summary generation from transcripts
+- [ ] Test multi-participant flow
+- [ ] Test language detection and display
+
+### Test Coverage Target
+- [ ] >90% coverage across all new AI components
+- [ ] Full flow tested with real Netlify Functions
+- [ ] Error scenarios tested (timeouts, network, API errors)
+- [ ] Session cleanup tested
+
+---
+
+## Phase 10: Production Deployment ⏳ **PENDING**
+
+### Pre-Deployment Checklist
+- [ ] All tests passing (238+ tests)
+- [ ] No console errors in production build
+- [ ] Security audit complete:
+  - [ ] No secrets in source code
+  - [ ] HTTPS only enforced
+  - [ ] CORS properly configured
+  - [ ] Rate limiting active
+  - [ ] Input validation working
+- [ ] Performance audit:
+  - [ ] Bundle size optimized
+  - [ ] API response times <2s
+  - [ ] Transcription <60s for 2min audio
+- [ ] Cost audit:
+  - [ ] Portkey: ~$0.50/hour usage
+  - [ ] OpenAI Whisper: $0.02/min audio
+  - [ ] Claude: $0.003/K input tokens
+  - [ ] Total estimated: <$10/month
+
+### Netlify Deployment
+- [ ] Connect GitHub repository to Netlify
+- [ ] Configure build command: `npm run build`
+- [ ] Configure publish directory: `dist`
+- [ ] Set environment variables (see below)
+- [ ] Enable automatic deploys on main branch
+- [ ] Configure custom domain (optional)
+- [ ] Enable HTTPS/TLS (automatic)
+
+### Monitoring & Logging
+- [ ] Set up Netlify Analytics
+- [ ] Configure error tracking (Sentry)
+- [ ] Monitor Portkey API usage
+- [ ] Monitor Redis connection health
+- [ ] Monitor Pusher channel usage
+- [ ] Set up alerts for errors/timeouts
+
+### Post-Deployment
+- [ ] Smoke test: Full session flow works
+- [ ] Performance baseline recorded
+- [ ] Rollback plan documented
+- [ ] User documentation complete
+- [ ] Support channel set up
 
 ---
 
