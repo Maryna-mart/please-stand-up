@@ -26,7 +26,11 @@
         <div class="bg-white rounded-lg shadow p-6">
           <h2 class="text-xl font-bold text-gray-900 mb-4">Your Turn</h2>
           <TalkSession
+            v-if="sessionId && userId && userName"
             :duration="120"
+            :session-id="sessionId"
+            :user-id="userId"
+            :user-name="userName"
             @talk-started="onTalkStarted"
             @talk-stopped="onTalkStopped"
             @talk-ended="onTalkEnded"
@@ -105,7 +109,12 @@ interface Transcript {
 
 const route = useRoute()
 const router = useRouter()
-const { leaveSession: performLeaveSession, session: sessionData } = useSession()
+const {
+  leaveSession: performLeaveSession,
+  session: sessionData,
+  userId,
+  userName,
+} = useSession()
 const { subscribeToSession, unsubscribeFromSession } = usePusher()
 
 const sessionId = computed(() => route.params.id as string)
@@ -174,6 +183,7 @@ const onTalkEnded = () => {
 
 const onTranscriptReady = (transcriptText: string) => {
   transcripts.value.push({
+    participantName: userName.value || 'Anonymous',
     text: transcriptText,
   })
 }

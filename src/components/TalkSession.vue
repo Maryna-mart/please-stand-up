@@ -70,7 +70,7 @@
       <button
         :disabled="isTranscribing"
         class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition"
-        @click="uploadAudio"
+        @click="uploadAudioToAPI"
       >
         {{ isTranscribing ? 'Transcribing...' : 'Transcribe' }}
       </button>
@@ -94,9 +94,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
+import { uploadAudio as uploadAudioAPI, parseAPIError } from '../lib/ai-api'
 
 interface Props {
   duration?: number
+  sessionId: string
+  userId: string
+  userName: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -263,21 +267,26 @@ const reset = () => {
   transcriptionError.value = ''
 }
 
-const uploadAudio = async () => {
+const uploadAudioToAPI = async () => {
   if (!audioBlob.value) return
 
   try {
     isTranscribing.value = true
     transcriptionError.value = ''
 
-    // TODO: Implement API call to transcribe
-    // For now, emit a mock transcript
-    const mockTranscript =
-      'Transcription will be implemented with Portkey Whisper API'
-    emit('transcript-ready', mockTranscript)
+    // Upload audio to Portkey Whisper API via Netlify function
+    const result = await uploadAudioAPI(
+      props.sessionId,
+      props.userId,
+      props.userName,
+      audioBlob.value,
+      'webm'
+    )
+
+    emit('transcript-ready', result.text)
   } catch (error) {
-    transcriptionError.value =
-      error instanceof Error ? error.message : 'Failed to transcribe audio'
+    const apiError = parseAPIError(error)
+    transcriptionError.value = apiError.message
   } finally {
     isTranscribing.value = false
   }
