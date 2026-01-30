@@ -142,13 +142,12 @@ export async function transcribeAudio(
       mimeType: `audio/${audioFormat}`,
     })
 
-    // Convert form to buffer for fetch
-    const formBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = []
-      form.on('data', (chunk: Buffer) => chunks.push(chunk))
-      form.on('end', () => resolve(Buffer.concat(chunks)))
-      form.on('error', reject)
-    })
+    // Convert form to buffer by reading the stream
+    const chunks: Buffer[] = []
+    for await (const chunk of form) {
+      chunks.push(chunk as Buffer)
+    }
+    const formBuffer = Buffer.concat(chunks)
 
     const apiKey = process.env.PORTKEY_API_KEY!
     const response = await fetch(
