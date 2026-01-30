@@ -106,7 +106,8 @@ interface Transcript {
 
 const route = useRoute()
 const router = useRouter()
-const { leaveSession: performLeaveSession } = useSession()
+const { leaveSession: performLeaveSession, session: sessionData, userId: currentUserId } =
+  useSession()
 const { subscribeToSession, unsubscribeFromSession } = usePusher()
 
 const sessionId = computed(() => route.params.id as string)
@@ -208,6 +209,19 @@ const leaveSession = async () => {
 
 // Subscribe to Pusher channel on mount
 onMounted(() => {
+  // Initialize participants from session data
+  if (sessionData.value?.participants) {
+    participants.value = sessionData.value.participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      status: p.status as 'waiting' | 'recording' | 'done',
+      transcriptReady: p.status === 'done',
+    }))
+  }
+
+  // Set isLeader based on session data
+  isLeader.value = sessionData.value?.leaderId === currentUserId.value
+
   subscribeToSession(sessionId.value, {
     onUserJoined: handleUserJoined,
     onUserLeft: handleUserLeft,
