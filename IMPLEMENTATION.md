@@ -46,6 +46,16 @@
   - Connected Session.vue to real summarize API
   - Full error handling with user feedback
 
+### Transcription Debugging & Fix (Latest)
+- ✅ Discovered "Model is required" error from Portkey API
+- ✅ Fixed model name: changed from `'openai/whisper-1'` to `'whisper-1'`
+- ✅ Added detailed raw fetch logging to capture full HTTP responses
+- **NEXT**: Test transcription end-to-end with the fix
+  - Record audio and verify transcription works
+  - Check logs for any new errors
+  - If successful, move to Phase 7 (Email Delivery)
+  - If issues persist, logs will show actual error messages from Portkey
+
 ---
 
 ## Phase 3.6: Password Protection ✅ **COMPLETED**
