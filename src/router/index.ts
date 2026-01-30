@@ -42,9 +42,8 @@ router.beforeEach(async to => {
   if (to.name === 'Session') {
     const sessionId = to.params.id as string
 
-    // Dynamically import to avoid circular dependency
     const { useSession } = await import('../composables/useSession')
-    const { session, userId } = useSession()
+    const { session, userId, userName, leaveSession } = useSession()
     const { getSession } = await import('../lib/session-api')
 
     // Always check if session is valid on backend first
@@ -61,7 +60,6 @@ router.beforeEach(async to => {
 
         if (!isValidParticipant) {
           // userId is not valid - clear cache and redirect to join
-          const { leaveSession } = useSession()
           leaveSession()
           return {
             name: 'Home',
@@ -74,8 +72,7 @@ router.beforeEach(async to => {
         if (backendSession.passwordRequired) {
           // Password-protected session - only ask for password if not the leader (creator)
           // Leaders don't need to re-enter password since they just created the session
-          const { userName } = useSession()
-          const isLeader = userName.value === backendSession.leaderName
+          const isLeader = userName.value && userName.value === backendSession.leaderName
           if (!isLeader) {
             // Non-leader participant needs to re-enter password
             // Keep cache (don't call leaveSession) so we can verify they're rejoining
