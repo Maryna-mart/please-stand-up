@@ -171,6 +171,67 @@ Format the summary as a structured document with each person as a section. Inclu
 }
 
 /**
+ * Summarize transcripts into structured sections
+ * @param transcriptText - Formatted transcript text (already formatted with participant names)
+ * @returns Summary text ready for parsing
+ */
+export async function summarizeTranscripts(
+  transcriptText: string
+): Promise<string> {
+  if (!transcriptText || transcriptText.trim().length === 0) {
+    throw new Error('Transcript text is required for summarization')
+  }
+
+  const portkey = initializePortkey()
+
+  return withRetry(async () => {
+    console.log('[Portkey] Starting transcript summarization', {
+      textLength: transcriptText.length,
+    })
+
+    const systemPrompt = `You are a professional meeting summarizer. Extract key information from the standup meeting transcripts and format it clearly.
+
+For each participant, extract:
+- ✅ Yesterday: What they completed yesterday
+- 🎯 Today: What they plan to do today
+- 🚫 Blockers: Any blockers or challenges
+- 📌 Team Action Items: Any actions needed from the team
+- 📝 Other: Any other important information that doesn't fit the above categories
+
+Format the summary as a structured document with each person as a section. Include all information provided, even if it goes into the "Other" section.`
+
+    const response = await portkey.chat.completions.create(
+      {
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Please summarize this standup meeting:\n\n${transcriptText}`,
+          },
+        ],
+      },
+      {
+        timeout: REQUEST_TIMEOUT_MS,
+      }
+    )
+
+    const summary = response.choices?.[0]?.message?.content || ''
+
+    if (!summary || summary.trim().length === 0) {
+      throw new Error('No summary content received from Claude')
+    }
+
+    console.log('[Portkey] Transcript summarization successful', {
+      summaryLength: summary.length,
+    })
+
+    return summary
+  })
+}
+
+/**
  * Check if Portkey is accessible
  * @returns true if API key is configured and valid
  */
