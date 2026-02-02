@@ -18,18 +18,6 @@
       />
     </div>
 
-    <!-- Recording Status -->
-    <div
-      v-if="isRecording"
-      class="flex items-center gap-2 text-red-600 font-semibold justify-center"
-    >
-      <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-      Recording... {{ formatTime(recordingTime) }}
-    </div>
-    <div v-else-if="audioBlob" class="text-green-600 font-semibold text-center">
-      ✓ Audio recorded ({{ formatFileSize(audioBlob.size) }})
-    </div>
-
     <!-- Microphone Permission Status -->
     <div
       v-if="microphoneError"
