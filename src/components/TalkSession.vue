@@ -278,7 +278,8 @@ const stopTalk = async () => {
   emit('talk-stopped')
 
   // Auto-transcribe after recording stops
-  // Give MediaRecorder time to process the audio blob
+  // Show transcribing state immediately, give MediaRecorder time to process
+  isTranscribing.value = true
   setTimeout(async () => {
     if (audioBlob.value) {
       await uploadAudioToAPI()
@@ -300,7 +301,6 @@ const uploadAudioToAPI = async () => {
   if (!audioBlob.value) return
 
   try {
-    isTranscribing.value = true
     transcriptionError.value = ''
 
     // Upload audio to Portkey Whisper API via Netlify function
