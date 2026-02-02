@@ -9,7 +9,9 @@
         class="border border-gray-200 rounded-lg overflow-hidden shadow-sm"
       >
         <!-- Participant Header -->
-        <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b">
+        <div
+          class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b"
+        >
           <h3 class="text-lg font-semibold text-gray-900">
             {{ participant.name }}
           </h3>
@@ -22,7 +24,9 @@
             v-if="participant.sections.yesterday"
             class="px-6 py-4 hover:bg-gray-50 transition"
           >
-            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <h4
+              class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"
+            >
               <span>✅</span>
               <span>Yesterday</span>
             </h4>
@@ -36,7 +40,9 @@
             v-if="participant.sections.today"
             class="px-6 py-4 hover:bg-gray-50 transition"
           >
-            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <h4
+              class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"
+            >
               <span>🎯</span>
               <span>Today</span>
             </h4>
@@ -50,7 +56,9 @@
             v-if="participant.sections.blockers"
             class="px-6 py-4 bg-red-50 hover:bg-red-100 transition"
           >
-            <h4 class="text-sm font-semibold text-red-900 mb-2 flex items-center gap-2">
+            <h4
+              class="text-sm font-semibold text-red-900 mb-2 flex items-center gap-2"
+            >
               <span>🚫</span>
               <span>Blockers</span>
             </h4>
@@ -64,7 +72,9 @@
             v-if="participant.sections.actionItems"
             class="px-6 py-4 bg-yellow-50 hover:bg-yellow-100 transition"
           >
-            <h4 class="text-sm font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+            <h4
+              class="text-sm font-semibold text-yellow-900 mb-2 flex items-center gap-2"
+            >
               <span>📌</span>
               <span>Team Action Items</span>
             </h4>
@@ -78,7 +88,9 @@
             v-if="participant.sections.other"
             class="px-6 py-4 bg-gray-50 hover:bg-gray-100 transition"
           >
-            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <h4
+              class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2"
+            >
               <span>📝</span>
               <span>Other</span>
             </h4>

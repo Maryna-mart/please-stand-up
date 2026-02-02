@@ -67,6 +67,30 @@
   - Test transcription end-to-end
   - If successful, move to Phase 7 (Email Delivery)
 
+### Current Session: Email Capture + Session Finalization (IN PROGRESS)
+- ✅ **DONE**: Frontend email capture
+  - CreateSessionCard with email field
+  - JoinSessionCard with email field
+- ✅ **DONE**: Email validation & encryption
+  - validateEmail(), validateEmailList()
+  - AES-256-GCM email encryption with PBKDF2
+  - Comprehensive tests (90+ test cases)
+- ✅ **DONE**: Frontend API types updated
+  - CreateSessionPayload includes email
+  - JoinSessionPayload includes email
+  - useSession composable passes email
+- ⏳ **NEXT STEP**: Backend email storage
+  - Update create-session.ts to validate & store encrypted email
+  - Update join-session.ts to validate & store encrypted email
+- ⏳ **THEN**: Email delivery infrastructure
+  - Create SendGrid client (sendgrid-client.ts)
+  - Create finish-session endpoint
+  - Generate & send summary email with structured format
+- ⏳ **THEN**: UI & orchestration
+  - Rename "Generate Summary" → "Standup is Finished"
+  - Update Session.vue to call finish-session
+  - Remove SummaryView UI component
+
 ---
 
 ## Phase 3.6: Password Protection ✅ **COMPLETED**
@@ -107,16 +131,18 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 ## Phase 6: AI Integration ⏳ **IN PROGRESS**
 
 ### 6.1 Audio Transcription with Deepgram ⏳ (NEW)
-- [ ] Create `netlify/functions/lib/deepgram-server.ts`
+- [x] Create `netlify/functions/lib/deepgram-server.ts`
   - Initialize with Deepgram API key
   - Implement `transcribeAudio()` function
   - Error handling and retry logic
   - Logging for debugging
-- [ ] Update `netlify/functions/transcribe.ts`
+- [x] Update `netlify/functions/transcribe.ts`
   - Change import from portkey-server to deepgram-server
   - Keep same request/response interface
-- [ ] Add DEEPGRAM_API_KEY to `.env.example`
-- [ ] Test transcription end-to-end
+- [x] Add DEEPGRAM_API_KEY to `.env.example`
+- [x] **DONE**: Test transcription endpoint
+  - Created `netlify/functions/__tests__/transcribe.test.ts`
+  - Tests multipart form parsing, validation, error handling
 
 ### 6.2 Portkey Setup ✅ (Revised for Summarization Only)
 - [x] Create `netlify/functions/lib/portkey-server.ts`
@@ -170,27 +196,228 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ---
 
-## Phase 7: Email Delivery
+## Phase 7: Email-Driven Session Completion (REDESIGNED)
 
-### 7.1 SendGrid Setup
-- [ ] Create `netlify/functions/lib/sendgrid-client.ts`
-- [ ] Initialize with API key, create template function
-- [ ] Tests: initialization, template generation
+### 7.0 Architecture Changes
+**Objective**: Move email collection to login, auto-send summary on session completion
+- Remove `SummaryView.vue` UI (keep parsing utilities for backend)
+- Email field added to both CreateSessionCard and JoinSessionCard
+- Store email in Redis session data (encrypted in transit, hashed at rest if needed)
+- "Generate Summary" button renamed to "Standup is Finished"
+- Single action: Generate summary + send email + end session
 
-### 7.2 Send Function
-- [ ] Create `netlify/functions/send-summary.ts`
-- [ ] Accept: sessionId, summary, emails[], subject
-- [ ] Format HTML + plain text, include date/time
-- [ ] Send via SendGrid
-- [ ] Errors: invalid emails, SendGrid errors, rate limits
-- [ ] Tests: success, invalid emails, errors
+### 7.1 Data Model Changes
+- Update Redis session schema to include email field
+- Extend `Session` interface in types to include organizer email
+- Migration: CreateSessionCard + JoinSessionCard need email input
 
-### 7.3 UI Integration
-- [ ] Add email form to Summary component
-- [ ] Validate emails (comma-separated)
-- [ ] Send button with loading state
-- [ ] Success/error notifications
-- [ ] E2E tests: validation, send flow, messages
+### 7.2 Frontend: Login/Join Page Email Integration
+
+#### 7.2.1 CreateSessionCard Enhancement
+- [ ] Add email input field (required)
+- [ ] Email validation: basic format check (email regex)
+- [ ] Show validation error if invalid
+- [ ] Update API call to include email in create-session request
+- [ ] File: [src/components/CreateSessionCard.vue](src/components/CreateSessionCard.vue)
+
+#### 7.2.2 JoinSessionCard Enhancement
+- [ ] Add email input field (required)
+- [ ] Email validation: basic format check
+- [ ] Update API call to include email in join-session request
+- [ ] File: [src/components/JoinSessionCard.vue](src/components/JoinSessionCard.vue)
+
+#### 7.2.3 Session Storage
+- [ ] Update localStorage to include organizer email
+- [ ] File: [src/composables/useSession.ts](src/composables/useSession.ts)
+
+### 7.3 Backend: Email Storage & Encryption
+
+#### 7.3.1 Create Session Function Update
+- [ ] Update `netlify/functions/create-session.ts`:
+  - Accept `email` field in request
+  - Validate email format (regex pattern)
+  - Store email in Redis session data
+  - Return email in response (confirmation only)
+- [ ] Add email validation utility to `netlify/functions/lib/validation.ts`
+
+#### 7.3.2 Join Session Function Update
+- [ ] Update `netlify/functions/join-session.ts`:
+  - Accept `email` field in request
+  - Validate email format
+  - Store email in Redis session (update organizer email if needed)
+  - Return email in response
+
+#### 7.3.3 Security: Email Encryption in Redis
+- [ ] Option A: Hash email using SHA256 (one-way, for storage)
+- [ ] Option B: Encrypt email with session secret (reversible for SendGrid)
+- **Decision**: Use encryption (Option B) for sending capability
+  - Create `netlify/functions/lib/email-crypto.ts`:
+    - `encryptEmail(email, sessionSecret)` - AES-256-GCM
+    - `decryptEmail(encryptedEmail, sessionSecret)` - AES-256-GCM
+  - Derive session secret from session ID + env secret
+- [ ] Never log or expose plaintext email in logs
+
+### 7.4 Backend: Session Finalization Function
+
+#### 7.4.1 Create Finish Session Function
+- [ ] Create `netlify/functions/finish-session.ts`:
+  - Accept: `sessionId` only (email comes from Redis)
+  - Retrieve session from Redis
+  - Generate summary from stored transcripts
+  - Decrypt email from session
+  - Send email via SendGrid
+  - Mark session as completed (status: "completed")
+  - Delete session from Redis (cleanup)
+  - Broadcast "session-finished" via Pusher (all clients disconnect)
+  - Return: `{success: true, emailSent: boolean, message: string}`
+- [ ] Error handling:
+  - 404: Session not found
+  - 500: Summary generation failed
+  - 502: Email send failed (non-blocking, still complete session)
+  - 400: Missing/invalid sessionId
+
+### 7.5 Backend: SendGrid Integration
+
+#### 7.5.1 SendGrid Client Setup
+- [ ] Create `netlify/functions/lib/sendgrid-client.ts`:
+  - Initialize with SENDGRID_API_KEY
+  - Function: `sendSummaryEmail(to, subject, summary)`
+  - Return: success status + message ID
+  - Error handling: Invalid emails, API errors, rate limits
+  - Logging: Track email sends (but NOT email addresses)
+
+#### 7.5.2 Email Template
+- [ ] Plain text format (no HTML for now, focus on deliverability)
+- [ ] Include:
+  - Subject: "Standup Summary - [date]"
+  - Greeting
+  - Per-participant sections (use parsed summary format)
+  - Timestamp
+  - Footer with app link
+- [ ] Variables: summary text, date, participant names
+
+### 7.6 Frontend: Session.vue Updates
+
+#### 7.6.1 Remove SummaryView Component
+- [ ] Delete SummaryView component UI section
+- [ ] Keep transcript display
+- [ ] Update imports
+
+#### 7.6.2 Rename & Update "Generate Summary" Button
+- [ ] Rename to "Standup is Finished"
+- [ ] Update handler: `finishSession()` instead of `generateSummary()`
+- [ ] Show loading state: "Finishing..."
+- [ ] API call: `finishSessionAPI(sessionId)`
+- [ ] On success: Show completion message + redirect to home after 2s
+- [ ] On error: Show error, allow retry
+- [ ] File: [src/views/Session.vue](src/views/Session.vue)
+
+#### 7.6.3 Real-time Session Completion
+- [ ] Listen for "session-finished" Pusher event
+- [ ] On event: Show "Session ended by organizer" + redirect to home
+- [ ] Unsubscribe from channel after completion
+
+### 7.7 Frontend: AI API Update
+- [ ] Add `finishSessionAPI(sessionId)` to [src/lib/ai-api.ts](src/lib/ai-api.ts):
+  - POST to `/.netlify/functions/finish-session`
+  - Pass sessionId
+  - Return success/error status
+  - Retry logic (3x for transient errors)
+
+### 7.8 Security Checklist
+- [ ] Email validation: Reject invalid format before storage
+- [ ] Email encryption: Use AES-256-GCM with session secret
+- [ ] Never log plaintext email
+- [ ] Secure deletion: Remove email from Redis immediately after send
+- [ ] Rate limiting: Prevent spam (1 finish per session)
+- [ ] No email in responses: Don't echo email back in API responses
+- [ ] HTTPS only: All email transmission encrypted
+
+### 7.9 Testing Strategy
+
+#### 7.9.1 New Tests Required
+- [ ] **Unit: Email Validation**
+  - Valid emails: user@example.com, test+tag@domain.co.uk
+  - Invalid emails: missing @, no domain, control chars
+  - File: `src/__tests__/unit/email-validation.test.ts`
+
+- [ ] **Unit: Email Encryption/Decryption**
+  - Encrypt → decrypt roundtrip
+  - Different session secrets produce different ciphertexts
+  - Invalid encrypted data handled gracefully
+  - File: `netlify/functions/__tests__/lib/email-crypto.test.ts`
+
+- [ ] **Unit: SendGrid Client**
+  - Initialize with API key
+  - Send email success response
+  - Handle SendGrid API errors
+  - Invalid email format handling
+  - File: `netlify/functions/__tests__/lib/sendgrid-client.test.ts`
+
+- [ ] **Integration: CreateSessionCard with Email**
+  - Email field rendered
+  - Email validation feedback
+  - API call includes email
+  - File: `src/__tests__/unit/CreateSessionCard.test.ts` (update)
+
+- [ ] **Integration: JoinSessionCard with Email**
+  - Email field rendered
+  - Email validation feedback
+  - API call includes email
+  - File: `src/__tests__/unit/JoinSessionCard.test.ts` (update)
+
+- [ ] **Integration: create-session Endpoint**
+  - Accept email, validate, store encrypted
+  - Return success/error with email confirmation
+  - File: `netlify/functions/__tests__/create-session.test.ts` (update)
+
+- [ ] **Integration: join-session Endpoint**
+  - Accept email, validate, update session
+  - File: `netlify/functions/__tests__/join-session.test.ts` (update)
+
+- [ ] **Integration: finish-session Endpoint**
+  - Retrieve session + email
+  - Generate summary
+  - Send email via SendGrid
+  - Delete session from Redis
+  - Broadcast Pusher event
+  - Error handling (session not found, send failure)
+  - File: `netlify/functions/__tests__/finish-session.test.ts` (new)
+
+- [ ] **Component: Session.vue**
+  - "Generate Summary" renamed to "Standup is Finished"
+  - Button calls finish-session API
+  - Show loading state
+  - Success: Show message + redirect
+  - Error: Show error, allow retry
+  - Listen for "session-finished" Pusher event
+  - File: `src/__tests__/unit/Session.test.ts` (update)
+
+- [ ] **Component: SummaryView Removal**
+  - Tests for SummaryView component can be removed
+  - Keep tests for parseSummary utility function
+  - File: `src/__tests__/unit/summary-parser.test.ts` (if exists)
+
+- [ ] **E2E: Full Flow**
+  - Create session with email
+  - Record transcripts
+  - Click "Standup is Finished"
+  - Verify email sent
+  - Verify session deleted
+  - Verify all users see session-finished event
+  - File: `e2e/full-flow.spec.ts`
+
+#### 7.9.2 Test Coverage Goals
+- >90% coverage for new email utilities
+- >85% coverage for backend finish-session
+- All error paths tested
+- No security bypass scenarios
+
+### 7.10 Environment Variables (NEW)
+- [ ] `SENDGRID_API_KEY` - SendGrid API key
+- [ ] `SENDGRID_FROM_EMAIL` - Verified sender email (e.g., noreply@standup.app)
+- [ ] `SENDGRID_FROM_NAME` - Display name for sender
+- [ ] `SESSION_SECRET` (existing) - Use for email encryption derivation
 
 ---
 
@@ -243,6 +470,19 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
   - Audio transcription flow
   - Summary generation and email delivery
 - [ ] Document error handling strategy across all layers
+
+---
+
+## Known Testing Gaps ⚠️
+
+**Missing Endpoint Tests (Critical for Phase 7)**:
+- [ ] `create-session.test.ts` - Session creation, password hashing, email storage
+- [ ] `join-session.test.ts` - Session joining, password validation, email update
+- [ ] `get-session.test.ts` - Session retrieval, privacy (no password in response)
+- [ ] `summarize.test.ts` - Summary generation, Portkey integration
+- [ ] `finish-session.test.ts` - Session completion, email sending, cleanup
+
+**Note**: These tests are essential for Phase 7 implementation and should be added alongside backend changes.
 
 ---
 
@@ -413,11 +653,13 @@ Set via **Site Settings** → **Build & deploy** → **Environment**:
 - `SESSION_SECRET` - Random 32-character string
 Success Criteria (MVP)
 ✅ Phases 1-5 + 3.6 (Password Protection) complete
- Phases 6, 8 complete
+✅ Phases 6 complete
+⏳ Phase 7 (Email-Driven Session Completion) - IN PROGRESS
+⏳ Phase 8 (Privacy Banner) - PENDING
  >80% test coverage maintained
  E2E tests passing
  Tested with 5+ person standup
- Email delivery working
+ Email delivery working (auto-send on session finish)
  Transcription >80% accuracy
  No security vulnerabilities
  Monthly cost <$10
@@ -431,6 +673,11 @@ Features Implemented
 ✅ localStorage persistence
 ✅ Audio recording (120s timer)
 ✅ Real-time participant status
+✅ AI summarization (Claude via Portkey)
+✅ Audio transcription (Deepgram)
+⏳ Email capture on login (NEW)
+⏳ Email-based session finalization (NEW)
+⏳ Auto-send summary email (NEW)
 
 Postponed (Post-MVP)
 Phase 9: Real-time transcript sync

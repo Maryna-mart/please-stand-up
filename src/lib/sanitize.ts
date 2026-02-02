@@ -128,3 +128,45 @@ export const validatePasswordStrength = (password: string): boolean => {
 export const sanitizeForDisplay = (input: string): string => {
   return sanitizeUserInput(input)
 }
+
+/**
+ * Validate email address format
+ * Basic RFC 5322 simplified validation
+ * @param email - Email address to validate
+ * @returns True if valid email format
+ */
+export const validateEmail = (email: string): boolean => {
+  if (!email || typeof email !== 'string') {
+    return false
+  }
+
+  const trimmed = email.trim()
+
+  // Basic email regex: local-part@domain.extension
+  // Allows: alphanumeric, dots, hyphens, underscores, plus signs
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  return emailRegex.test(trimmed)
+}
+
+/**
+ * Validate comma-separated email list
+ * @param emails - Comma-separated email addresses
+ * @returns True if all emails are valid
+ */
+export const validateEmailList = (emails: string): boolean => {
+  if (!emails || typeof emails !== 'string') {
+    return false
+  }
+
+  const emailList = emails
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e.length > 0)
+
+  if (emailList.length === 0) {
+    return false
+  }
+
+  return emailList.every(email => validateEmail(email))
+}

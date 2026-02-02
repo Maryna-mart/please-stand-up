@@ -57,6 +57,34 @@
         </p>
       </div>
 
+      <div class="mb-6">
+        <label
+          for="createEmail"
+          class="block text-sm font-medium text-gray-700 mb-2"
+        >
+          Email Address
+        </label>
+        <input
+          id="createEmail"
+          v-model="form.email"
+          type="email"
+          placeholder="your.email@example.com"
+          :class="[
+            'w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2',
+            form.email && !isEmailValid
+              ? 'border-red-300 focus:ring-red-500'
+              : 'border-gray-300 focus:ring-blue-500',
+          ]"
+          required
+        />
+        <p class="mt-2 text-xs text-gray-500">
+          We'll send the standup summary to this email
+        </p>
+        <p v-if="form.email && !isEmailValid" class="mt-1 text-xs text-red-600">
+          Please enter a valid email address
+        </p>
+      </div>
+
       <button
         type="submit"
         :disabled="isLoading || !formValid"
@@ -72,7 +100,11 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSession } from '../composables/useSession'
-import { validateUserName, validatePasswordStrength } from '../lib/sanitize'
+import {
+  validateUserName,
+  validatePasswordStrength,
+  validateEmail,
+} from '../lib/sanitize'
 
 const router = useRouter()
 const { createSession } = useSession()
@@ -83,6 +115,7 @@ const isLoading = ref(false)
 const form = ref({
   name: '',
   password: '',
+  email: '',
 })
 
 const isNameValid = computed(() =>
@@ -93,11 +126,17 @@ const isPasswordValid = computed(() =>
   form.value.password ? validatePasswordStrength(form.value.password) : true
 )
 
+const isEmailValid = computed(() =>
+  form.value.email ? validateEmail(form.value.email) : true
+)
+
 const formValid = computed(
   () =>
     form.value.name.trim().length > 0 &&
+    form.value.email.trim().length > 0 &&
     isNameValid.value &&
-    isPasswordValid.value
+    isPasswordValid.value &&
+    isEmailValid.value
 )
 
 const handleSubmit = async () => {
@@ -108,9 +147,18 @@ const handleSubmit = async () => {
       throw new Error('Name is required')
     }
 
+    if (!form.value.email.trim()) {
+      throw new Error('Email is required')
+    }
+
+    if (!isEmailValid.value) {
+      throw new Error('Invalid email address')
+    }
+
     const session = await createSession(
       form.value.name.trim(),
-      form.value.password || undefined
+      form.value.password || undefined,
+      form.value.email.trim()
     )
     await router.push(`/session/${session.id}`)
   } catch (error) {

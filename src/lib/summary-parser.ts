@@ -73,9 +73,7 @@ export function parseSummary(summaryText: string): ParsedSummary {
     // Detect section headers
     if (trimmed.includes('✅') && trimmed.includes('Yesterday')) {
       currentSectionType = 'yesterday'
-      const content = trimmed
-        .replace(/✅\s*Yesterday\s*:?\s*/i, '')
-        .trim()
+      const content = trimmed.replace(/✅\s*Yesterday\s*:?\s*/i, '').trim()
       if (content) {
         currentSection.yesterday = content
       }
@@ -84,9 +82,7 @@ export function parseSummary(summaryText: string): ParsedSummary {
 
     if (trimmed.includes('🎯') && trimmed.includes('Today')) {
       currentSectionType = 'today'
-      const content = trimmed
-        .replace(/🎯\s*Today\s*:?\s*/i, '')
-        .trim()
+      const content = trimmed.replace(/🎯\s*Today\s*:?\s*/i, '').trim()
       if (content) {
         currentSection.today = content
       }
@@ -95,9 +91,7 @@ export function parseSummary(summaryText: string): ParsedSummary {
 
     if (trimmed.includes('🚫') && trimmed.includes('Blocker')) {
       currentSectionType = 'blockers'
-      const content = trimmed
-        .replace(/🚫\s*Blocker[s]?\s*:?\s*/i, '')
-        .trim()
+      const content = trimmed.replace(/🚫\s*Blocker[s]?\s*:?\s*/i, '').trim()
       if (content) {
         currentSection.blockers = content
       }
@@ -117,9 +111,7 @@ export function parseSummary(summaryText: string): ParsedSummary {
 
     if (trimmed.includes('📝') && trimmed.includes('Other')) {
       currentSectionType = 'other'
-      const content = trimmed
-        .replace(/📝\s*Other\s*:?\s*/i, '')
-        .trim()
+      const content = trimmed.replace(/📝\s*Other\s*:?\s*/i, '').trim()
       if (content) {
         currentSection.other = content
       }
@@ -166,7 +158,9 @@ export function hasSectionContent(section: SummarySection): boolean {
 /**
  * Get all non-empty sections from a summary
  */
-export function getSectionKeys(section: SummarySection): (keyof SummarySection)[] {
+export function getSectionKeys(
+  section: SummarySection
+): (keyof SummarySection)[] {
   const keys: (keyof SummarySection)[] = []
   if (section.yesterday) keys.push('yesterday')
   if (section.today) keys.push('today')

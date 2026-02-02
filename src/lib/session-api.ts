@@ -6,6 +6,7 @@
 export interface CreateSessionPayload {
   leaderName: string
   password?: string
+  email?: string
 }
 
 export interface CreateSessionResponse {
@@ -29,6 +30,7 @@ export interface JoinSessionPayload {
   sessionId: string
   participantName: string
   password?: string
+  email?: string
 }
 
 export interface JoinSessionResponse {

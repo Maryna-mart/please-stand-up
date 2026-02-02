@@ -31,12 +31,14 @@ const currentUserName = ref<string | null>(null)
  * Create a new standup session via API
  * @param userName - Name of the user creating the session (leader)
  * @param password - Optional password to protect the session
+ * @param email - Email address for summary delivery
  * @returns The created session
  * @throws Error if validation or API call fails
  */
 export const createSession = async (
   userName: string,
-  password?: string
+  password?: string,
+  email?: string
 ): Promise<Session> => {
   // Validate user name
   if (!validateUserName(userName)) {
@@ -57,6 +59,7 @@ export const createSession = async (
   const payload: CreateSessionPayload = {
     leaderName: sanitizedName,
     password,
+    email,
   }
 
   const apiResponse = await apiCreateSession(payload)
@@ -98,13 +101,15 @@ export const createSession = async (
  * @param sessionId - The session ID to join
  * @param userName - Name of the user joining
  * @param password - Password if session is protected
+ * @param email - Email address for summary delivery
  * @returns The joined session
  * @throws Error if session not found, expired, wrong password, or invalid input
  */
 export const joinSession = async (
   sessionId: string,
   userName: string,
-  password?: string
+  password?: string,
+  email?: string
 ): Promise<Session> => {
   // Validate user name
   if (!validateUserName(userName)) {
@@ -121,6 +126,7 @@ export const joinSession = async (
     sessionId,
     participantName: sanitizedName,
     password,
+    email,
   }
 
   const apiResponse = await apiJoinSession(payload)
