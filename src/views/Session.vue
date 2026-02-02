@@ -97,10 +97,7 @@ import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import { usePusher } from '../composables/usePusher'
-import {
-  finishSession as finishSessionAPI,
-  parseAPIError,
-} from '../lib/ai-api'
+import { finishSession as finishSessionAPI, parseAPIError } from '../lib/ai-api'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
@@ -218,12 +215,21 @@ const finishSession = async () => {
     finishError.value = ''
 
     // Call finish-session API to generate summary from transcripts
-    await finishSessionAPI(
+    const summary = await finishSessionAPI(
       sessionId.value,
       transcripts.value as Array<{
         participantName: string
         text: string
       }>
+    )
+
+    // Replace raw transcripts with structured summary
+    // so TranscriptView displays the formatted sections immediately
+    transcripts.value = summary.participants.map(
+      (p: { name: string; sections: Record<string, string | undefined> }) => ({
+        participantName: p.name,
+        text: formatSummaryAsText(p.sections),
+      })
     )
 
     // Summary generated and session updated
@@ -239,6 +245,35 @@ const finishSession = async () => {
   } finally {
     isFinishing.value = false
   }
+}
+
+// Format structured sections into text format for summary parser
+const formatSummaryAsText = (sections: {
+  yesterday?: string
+  today?: string
+  blockers?: string
+  actionItems?: string
+  other?: string
+}): string => {
+  const parts: string[] = []
+
+  if (sections.yesterday) {
+    parts.push(`✅ Yesterday: ${sections.yesterday}`)
+  }
+  if (sections.today) {
+    parts.push(`🎯 Today: ${sections.today}`)
+  }
+  if (sections.blockers) {
+    parts.push(`🚫 Blockers: ${sections.blockers}`)
+  }
+  if (sections.actionItems) {
+    parts.push(`📌 Team Action Items: ${sections.actionItems}`)
+  }
+  if (sections.other) {
+    parts.push(`📝 Other: ${sections.other}`)
+  }
+
+  return parts.join('\n\n')
 }
 
 const leaveSession = async () => {
