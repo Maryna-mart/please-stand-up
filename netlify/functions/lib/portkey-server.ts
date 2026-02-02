@@ -1,25 +1,17 @@
 /**
  * Portkey Server Configuration
- * Initializes Portkey client for transcription (Whisper) and summarization (Claude)
+ * Initializes Portkey client for summarization (Claude)
  * Handles API requests with error handling, retry logic, and logging
  */
 
 import OpenAI from 'openai'
 import { createHeaders } from 'portkey-ai'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
 
 // Configuration constants
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000
 const REQUEST_TIMEOUT_MS = 60000 // 60 seconds for AI operations
 const PORTKEY_GATEWAY_URL = 'https://api.portkey.ai/v1'
-
-interface TranscriptionResult {
-  text: string
-  language: string
-}
 
 interface SummarizationResult {
   summary: string
@@ -106,108 +98,6 @@ async function withRetry<T>(
 }
 
 /**
- * Transcribe audio to text using GPT multimodal
- * @param audioBuffer - Audio file buffer
- * @param audioFormat - Audio format (webm, mp3, mp4, wav)
- * @param language - Optional language code (e.g., 'en', 'de')
- * @returns Transcription result with detected language
- */
-export async function transcribeAudio(
-  audioBuffer: Buffer,
-  audioFormat: 'webm' | 'mp3' | 'mp4' | 'wav',
-  language?: string
-): Promise<TranscriptionResult> {
-  if (!audioBuffer || audioBuffer.length === 0) {
-    throw new Error('Audio buffer is empty')
-  }
-
-  if (audioBuffer.length > 25 * 1024 * 1024) {
-    throw new Error('Audio file exceeds 25MB limit')
-  }
-
-  return withRetry(async () => {
-    const client = initializePortkey()
-
-    console.log('[Portkey] Starting transcription for audio', {
-      size: audioBuffer.length,
-      format: audioFormat,
-      language: language || 'auto-detect',
-    })
-
-    // Write buffer to temporary file and use fs.createReadStream() like Portkey docs
-    const tempDir = os.tmpdir()
-    const tempFileName = `audio-${Date.now()}.${audioFormat}`
-    const tempFilePath = path.join(tempDir, tempFileName)
-
-    try {
-      // Write audio buffer to temporary file
-      fs.writeFileSync(tempFilePath, audioBuffer)
-      console.log('[Portkey] Created temporary audio file', {
-        path: tempFilePath,
-        size: audioBuffer.length,
-      })
-
-      // Use audio.transcriptions.create() API for speech-to-text via Portkey
-      // Following exact pattern from Portkey docs
-      const startTime = Date.now()
-      console.log('[Portkey] Sending transcription request to Portkey audio API...')
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response = await (client.audio.transcriptions.create as any)(
-        {
-          file: fs.createReadStream(tempFilePath),
-          model: 'whisper-1',
-          language: language && language !== 'auto-detect' ? language : undefined,
-        },
-        {
-          timeout: REQUEST_TIMEOUT_MS,
-        }
-      )
-
-      const duration = Date.now() - startTime
-      console.log('[Portkey] Transcription API response received', {
-        durationMs: duration,
-        hasText: !!response.text,
-        textLength: response.text?.length || 0,
-      })
-
-      if (!response.text || response.text.trim().length === 0) {
-        throw new Error('No transcription text in response')
-      }
-
-      console.log('[Portkey] Transcription successful', {
-        textLength: response.text.length,
-        language: language || 'auto-detect',
-      })
-
-      return {
-        text: response.text.trim(),
-        language: language || 'en',
-      }
-    } catch (error) {
-      console.error('[Portkey] Transcription failed with detailed error:', {
-        error: error,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: (error as any).message,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        status: (error as any).status,
-      })
-      throw error
-    } finally {
-      // Clean up temporary file
-      try {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath)
-          console.log('[Portkey] Cleaned up temporary file')
-        }
-      } catch (cleanupError) {
-        console.error('[Portkey] Failed to clean up temporary file:', cleanupError)
-      }
-    }
-  })
-}
-
-/**
  * Generate summary using Claude
  * @param transcripts - Array of participant transcripts
  * @param language - Language for output (default: detected from input)
@@ -266,7 +156,7 @@ Format the summary as a structured document with each person as a section.`
     )
 
     const summary =
-      response.content[0].type === 'text' ? response.content[0].text : ''
+      response.choices?.[0]?.message?.content || ''
 
     console.log('[Portkey] Summarization successful', {
       summaryLength: summary.length,

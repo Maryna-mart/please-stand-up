@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
-  transcribeAudio,
   generateSummary,
   isPortkeyConfigured,
   handlePortkeyError,
@@ -46,15 +45,6 @@ describe('Portkey Server', () => {
       expect(isPortkeyConfigured()).toBe(false)
     })
 
-    it('should throw error when transcribing without API key configured', async () => {
-      delete process.env.PORTKEY_API_KEY
-
-      const audioBuffer = Buffer.from('fake audio data')
-      await expect(transcribeAudio(audioBuffer, 'webm')).rejects.toThrow(
-        'Portkey API key not configured'
-      )
-    })
-
     it('should throw error when summarizing without API key configured', async () => {
       delete process.env.PORTKEY_API_KEY
 
@@ -71,49 +61,7 @@ describe('Portkey Server', () => {
     })
   })
 
-  describe('Transcription Validation', () => {
-    it('should reject empty audio buffer', async () => {
-      const emptyBuffer = Buffer.from('')
-
-      await expect(transcribeAudio(emptyBuffer, 'webm')).rejects.toThrow(
-        'Audio buffer is empty'
-      )
-    })
-
-    it('should reject audio buffer exceeding 25MB limit', async () => {
-      // Create a 26MB buffer
-      const largeBuffer = Buffer.alloc(26 * 1024 * 1024)
-
-      await expect(transcribeAudio(largeBuffer, 'webm')).rejects.toThrow(
-        'Audio file exceeds 25MB limit'
-      )
-    })
-
-    it('should accept valid audio formats', async () => {
-      const formats: Array<'webm' | 'mp3' | 'mp4' | 'wav'> = [
-        'webm',
-        'mp3',
-        'mp4',
-        'wav',
-      ]
-
-      for (const format of formats) {
-        const audioBuffer = Buffer.from('fake audio')
-        expect(async () => {
-          try {
-            await transcribeAudio(audioBuffer, format)
-          } catch (error) {
-            // Expected to fail at API call, but not validation
-            if ((error as Error).message.includes('buffer')) {
-              throw error
-            }
-          }
-        }).not.toThrow('Audio')
-      }
-    })
-  })
-
-  describe('Summarization Validation', () => {
+describe('Summarization Validation', () => {
     it('should reject empty transcripts', async () => {
       await expect(generateSummary([])).rejects.toThrow(
         'No transcripts provided for summarization'
@@ -291,22 +239,6 @@ describe('Portkey Server', () => {
   })
 
   describe('Language Support', () => {
-    it('should accept optional language parameter for transcription', async () => {
-      const audioBuffer = Buffer.from('fake audio')
-
-      // Should not throw validation error for language parameter
-      expect(async () => {
-        try {
-          await transcribeAudio(audioBuffer, 'webm', 'de')
-        } catch (error) {
-          // Expected to fail at API call
-          if ((error as Error).message.includes('language')) {
-            throw error
-          }
-        }
-      }).not.toThrow('language')
-    })
-
     it('should accept optional language parameter for summarization', async () => {
       const transcripts = [
         {
@@ -319,22 +251,6 @@ describe('Portkey Server', () => {
       expect(async () => {
         try {
           await generateSummary(transcripts, 'de')
-        } catch (error) {
-          // Expected to fail at API call
-          if ((error as Error).message.includes('language')) {
-            throw error
-          }
-        }
-      }).not.toThrow('language')
-    })
-
-    it('should default to English if language not specified', async () => {
-      const audioBuffer = Buffer.from('fake audio')
-
-      // Language parameter is optional, should work without it
-      expect(async () => {
-        try {
-          await transcribeAudio(audioBuffer, 'webm')
         } catch (error) {
           // Expected to fail at API call
           if ((error as Error).message.includes('language')) {
