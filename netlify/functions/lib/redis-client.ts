@@ -8,10 +8,14 @@ interface SessionData {
   id: string
   leaderName: string
   passwordHash?: string
+  encryptedEmail?: string
   participants: Array<{
     id: string
     name: string
+    encryptedEmail?: string
   }>
+  summary?: string
+  finishedAt?: number
   createdAt: number
 }
 
