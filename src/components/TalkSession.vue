@@ -116,6 +116,8 @@ const emit = defineEmits<{
   'talk-started': []
   'talk-stopped': []
   'talk-ended': []
+  'summarizing-started': []
+  'summarizing-ended': []
 }>()
 
 // Timer state
@@ -131,6 +133,7 @@ const audioUrl = ref('')
 const microphoneReady = ref(false)
 const microphoneError = ref('')
 const isTranscribing = ref(false)
+const isSummarizing = ref(false)
 const transcriptionError = ref('')
 const hasTranscript = ref(false)
 
@@ -153,7 +156,8 @@ const canStartRecording = computed(() => {
     !isRunning.value &&
     !isRecording.value &&
     !hasTranscript.value &&
-    !isTranscribing.value
+    !isTranscribing.value &&
+    !isSummarizing.value
   )
 })
 
@@ -164,6 +168,9 @@ const statusMessage = computed(() => {
   if (isTranscribing.value) {
     return 'Transcribing your standup...'
   }
+  if (isSummarizing.value) {
+    return 'Summarizing your standup...'
+  }
   if (hasTranscript.value) {
     return '✓ Standup transcribed successfully'
   }
@@ -171,7 +178,7 @@ const statusMessage = computed(() => {
     return `Audio recorded (${formatFileSize(audioBlob.value.size)})`
   }
   if (transcriptionError.value) {
-    return `Error: ${transcriptionError.value}`
+    return `Oops, something went wrong. Try again.`
   }
   return 'Click Talk to start your standup'
 })
@@ -324,6 +331,10 @@ const uploadAudioToAPI = async () => {
       audioBlob.value,
       'webm'
     )
+
+    // Signal that summarization is starting
+    isSummarizing.value = true
+    emit('summarizing-started')
 
     hasTranscript.value = true
     emit('transcript-ready', result.text)

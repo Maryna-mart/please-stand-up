@@ -199,17 +199,14 @@ export async function summarizeIndividualTranscript(
       textLength: transcriptText.length,
     })
 
-    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content):
+    const systemPrompt = `You are a standup meeting summarizer. Extract information from a standup update into these categories:
+- yesterday: What was completed
+- today: What is planned
+- blockers: Any obstacles or blockers
+- actionItems: Actions needed from the team
+- other: Any other important points
 
-{
-  "yesterday": "What they completed yesterday",
-  "today": "What they plan to do today",
-  "blockers": "Any blockers or challenges",
-  "actionItems": "Any actions needed from the team",
-  "other": "Any other important information"
-}
-
-Be concise and extract only the most important points. Return ONLY valid JSON, no additional text.`
+Return ONLY a valid JSON object with these exact keys. Include only keys that have content.`
 
     const response = await portkey.chat.completions.create(
       {
@@ -219,7 +216,7 @@ Be concise and extract only the most important points. Return ONLY valid JSON, n
         messages: [
           {
             role: 'user',
-            content: `Here is ${participantName}'s standup update:\n\n${transcriptText}\n\nExtract the key sections as JSON.`,
+            content: `Extract standup info from this and return ONLY JSON:\n\n${transcriptText}`,
           },
         ],
       },
@@ -231,10 +228,13 @@ Be concise and extract only the most important points. Return ONLY valid JSON, n
     const responseText = response.choices?.[0]?.message?.content || ''
 
     if (!responseText || responseText.trim().length === 0) {
+      console.error('[Portkey] Empty response from Claude')
       throw new Error('No summary content received from Claude')
     }
 
-    // Parse the JSON response
+    console.log('[Portkey] Raw response from Claude:', responseText.substring(0, 200))
+
+    // Parse the JSON response - try to extract JSON if wrapped in markdown
     let sections: {
       yesterday?: string
       today?: string
@@ -243,12 +243,22 @@ Be concise and extract only the most important points. Return ONLY valid JSON, n
       other?: string
     }
     try {
+      // Try direct parse first
       sections = JSON.parse(responseText)
     } catch {
-      console.warn(
-        '[Portkey] Failed to parse JSON response, falling back to empty sections'
-      )
-      sections = {}
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+      if (jsonMatch) {
+        try {
+          sections = JSON.parse(jsonMatch[1])
+        } catch {
+          console.error('[Portkey] Failed to parse extracted JSON:', jsonMatch[1].substring(0, 200))
+          sections = {}
+        }
+      } else {
+        console.error('[Portkey] Failed to parse JSON and no code blocks found:', responseText.substring(0, 200))
+        sections = {}
+      }
     }
 
     console.log('[Portkey] Individual transcript summarization successful', {

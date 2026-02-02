@@ -35,6 +35,8 @@
             @talk-stopped="onTalkStopped"
             @talk-ended="onTalkEnded"
             @transcript-ready="onTranscriptReady"
+            @summarizing-started="onSummarizingStarted"
+            @summarizing-ended="onSummarizingEnded"
           />
         </div>
       </div>
@@ -194,6 +196,14 @@ const onTalkEnded = () => {
   // Talk ended event handler
 }
 
+const onSummarizingStarted = () => {
+  // Summarization started - button is now disabled
+}
+
+const onSummarizingEnded = () => {
+  // Summarization completed or failed
+}
+
 const onTranscriptReady = async (transcriptText: string) => {
   try {
     // Immediately summarize the transcript to show structured sections
@@ -210,12 +220,18 @@ const onTranscriptReady = async (transcriptText: string) => {
       participantName: userName.value || 'Anonymous',
       text: formattedText,
     })
+
+    // Summarization succeeded
+    onSummarizingEnded()
   } catch {
     // If summarization fails, fall back to raw text
     transcripts.value.push({
       participantName: userName.value || 'Anonymous',
       text: transcriptText,
     })
+
+    // Summarization failed
+    onSummarizingEnded()
   }
 }
 
