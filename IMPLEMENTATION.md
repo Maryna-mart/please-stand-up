@@ -67,29 +67,32 @@
   - Test transcription end-to-end
   - If successful, move to Phase 7 (Email Delivery)
 
-### Current Session: Email Capture + Session Finalization (IN PROGRESS)
+### Current Session: Phase 7 Email Infrastructure (IN PROGRESS)
 - ✅ **DONE**: Frontend email capture
-  - CreateSessionCard with email field
-  - JoinSessionCard with email field
+  - CreateSessionCard with email field (required)
+  - JoinSessionCard with email field (required)
 - ✅ **DONE**: Email validation & encryption
-  - validateEmail(), validateEmailList()
-  - AES-256-GCM email encryption with PBKDF2
+  - validateEmail(), validateEmailList() in sanitize.ts
+  - AES-256-GCM email encryption with PBKDF2 (email-crypto.ts)
   - Comprehensive tests (90+ test cases)
 - ✅ **DONE**: Frontend API types updated
   - CreateSessionPayload includes email
   - JoinSessionPayload includes email
-  - useSession composable passes email
-- ⏳ **NEXT STEP**: Backend email storage
-  - Update create-session.ts to validate & store encrypted email
-  - Update join-session.ts to validate & store encrypted email
-- ⏳ **THEN**: Email delivery infrastructure
+  - useSession composable passes email through full stack
+- ✅ **DONE**: Backend email storage (Commit: ea41e93)
+  - create-session.ts: Accepts, validates, encrypts email
+  - join-session.ts: Accepts, validates, encrypts email per participant
+  - Email encrypted with AES-256-GCM using session ID as secret
+- ✅ **DONE**: Session.vue UI Update (Commit: TBD)
+  - Renamed "Generate Summary" → "Standup is Finished" (green button)
+  - Removed SummaryView UI component
+  - Added completion message display
+  - Added error handling for session finish
+- ⏳ **NEXT STEPS**: Email delivery infrastructure
   - Create SendGrid client (sendgrid-client.ts)
   - Create finish-session endpoint
-  - Generate & send summary email with structured format
-- ⏳ **THEN**: UI & orchestration
-  - Rename "Generate Summary" → "Standup is Finished"
-  - Update Session.vue to call finish-session
-  - Remove SummaryView UI component
+  - Connect finish-session API in ai-api.ts
+  - Wire finishSession() to call finish-session API
 
 ---
 
@@ -213,49 +216,50 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ### 7.2 Frontend: Login/Join Page Email Integration
 
-#### 7.2.1 CreateSessionCard Enhancement
-- [ ] Add email input field (required)
-- [ ] Email validation: basic format check (email regex)
-- [ ] Show validation error if invalid
-- [ ] Update API call to include email in create-session request
-- [ ] File: [src/components/CreateSessionCard.vue](src/components/CreateSessionCard.vue)
+#### 7.2.1 CreateSessionCard Enhancement ✅
+- [x] Add email input field (required)
+- [x] Email validation: basic format check (email regex)
+- [x] Show validation error if invalid
+- [x] Update API call to include email in create-session request
+- [x] File: [src/components/CreateSessionCard.vue](src/components/CreateSessionCard.vue)
 
-#### 7.2.2 JoinSessionCard Enhancement
-- [ ] Add email input field (required)
-- [ ] Email validation: basic format check
-- [ ] Update API call to include email in join-session request
-- [ ] File: [src/components/JoinSessionCard.vue](src/components/JoinSessionCard.vue)
+#### 7.2.2 JoinSessionCard Enhancement ✅
+- [x] Add email input field (required)
+- [x] Email validation: basic format check
+- [x] Update API call to include email in join-session request
+- [x] File: [src/components/JoinSessionCard.vue](src/components/JoinSessionCard.vue)
 
-#### 7.2.3 Session Storage
-- [ ] Update localStorage to include organizer email
-- [ ] File: [src/composables/useSession.ts](src/composables/useSession.ts)
+#### 7.2.3 Session Storage ✅
+- [x] Update localStorage to include organizer email
+- [x] File: [src/composables/useSession.ts](src/composables/useSession.ts)
 
 ### 7.3 Backend: Email Storage & Encryption
 
-#### 7.3.1 Create Session Function Update
-- [ ] Update `netlify/functions/create-session.ts`:
+#### 7.3.1 Create Session Function Update ✅
+- [x] Update `netlify/functions/create-session.ts`:
   - Accept `email` field in request
   - Validate email format (regex pattern)
-  - Store email in Redis session data
-  - Return email in response (confirmation only)
-- [ ] Add email validation utility to `netlify/functions/lib/validation.ts`
+  - Store encrypted email in Redis session data
+  - Encryption uses session ID as secret
+- [x] Email validation utility in `netlify/functions/lib/validation.ts`
 
-#### 7.3.2 Join Session Function Update
-- [ ] Update `netlify/functions/join-session.ts`:
+#### 7.3.2 Join Session Function Update ✅
+- [x] Update `netlify/functions/join-session.ts`:
   - Accept `email` field in request
   - Validate email format
-  - Store email in Redis session (update organizer email if needed)
-  - Return email in response
+  - Store encrypted email per participant
+  - Encryption uses session ID as secret
 
-#### 7.3.3 Security: Email Encryption in Redis
-- [ ] Option A: Hash email using SHA256 (one-way, for storage)
-- [ ] Option B: Encrypt email with session secret (reversible for SendGrid)
-- **Decision**: Use encryption (Option B) for sending capability
-  - Create `netlify/functions/lib/email-crypto.ts`:
+#### 7.3.3 Security: Email Encryption in Redis ✅
+- [x] **Decision**: Use encryption (Option B) for sending capability
+  - Created `netlify/functions/lib/email-crypto.ts`:
     - `encryptEmail(email, sessionSecret)` - AES-256-GCM
     - `decryptEmail(encryptedEmail, sessionSecret)` - AES-256-GCM
-  - Derive session secret from session ID + env secret
-- [ ] Never log or expose plaintext email in logs
+    - `serializeEncryptedEmail()` - JSON serialization
+    - `deserializeEncryptedEmail()` - JSON deserialization
+  - Uses session ID as encryption secret
+  - Random IV and salt per email (PBKDF2 key derivation)
+- [x] Never log or expose plaintext email in logs
 
 ### 7.4 Backend: Session Finalization Function
 
@@ -298,31 +302,32 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ### 7.6 Frontend: Session.vue Updates
 
-#### 7.6.1 Remove SummaryView Component
-- [ ] Delete SummaryView component UI section
-- [ ] Keep transcript display
-- [ ] Update imports
+#### 7.6.1 Remove SummaryView Component ✅
+- [x] Delete SummaryView component UI section
+- [x] Keep transcript display
+- [x] Update imports
 
-#### 7.6.2 Rename & Update "Generate Summary" Button
-- [ ] Rename to "Standup is Finished"
-- [ ] Update handler: `finishSession()` instead of `generateSummary()`
-- [ ] Show loading state: "Finishing..."
-- [ ] API call: `finishSessionAPI(sessionId)`
-- [ ] On success: Show completion message + redirect to home after 2s
-- [ ] On error: Show error, allow retry
-- [ ] File: [src/views/Session.vue](src/views/Session.vue)
+#### 7.6.2 Rename & Update "Generate Summary" Button ✅
+- [x] Rename to "Standup is Finished" (green button)
+- [x] Update handler: `finishSession()` instead of `generateSummary()`
+- [x] Show loading state: "Finishing..."
+- [x] Placeholder: `finishSessionAPI(sessionId)` - TODO
+- [x] On success: Show completion message + redirect to home after 2s
+- [x] On error: Show error, allow retry
+- [x] File: [src/views/Session.vue](src/views/Session.vue)
 
-#### 7.6.3 Real-time Session Completion
+#### 7.6.3 Real-time Session Completion ⏳
 - [ ] Listen for "session-finished" Pusher event
 - [ ] On event: Show "Session ended by organizer" + redirect to home
 - [ ] Unsubscribe from channel after completion
 
-### 7.7 Frontend: AI API Update
+### 7.7 Frontend: AI API Update ⏳
 - [ ] Add `finishSessionAPI(sessionId)` to [src/lib/ai-api.ts](src/lib/ai-api.ts):
   - POST to `/.netlify/functions/finish-session`
   - Pass sessionId
   - Return success/error status
   - Retry logic (3x for transient errors)
+  - **Blocked by**: finish-session endpoint creation
 
 ### 7.8 Security Checklist
 - [ ] Email validation: Reject invalid format before storage

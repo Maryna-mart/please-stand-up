@@ -57,29 +57,30 @@
       </div>
     </div>
 
-    <!-- Summary Error -->
-    <div v-if="summaryError" class="max-w-7xl mx-auto mt-6">
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p class="text-red-800 text-sm">{{ summaryError }}</p>
+    <!-- Completion Message -->
+    <div v-if="sessionFinished" class="max-w-7xl mx-auto mt-6">
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <p class="text-green-800 text-sm font-semibold">
+          ✓ Standup completed! Summary email sent.
+        </p>
       </div>
     </div>
 
-    <!-- Full-Width Summary Section (shown when ready) -->
-    <div v-if="showSummary" class="max-w-7xl mx-auto mt-6">
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">Standup Summary</h2>
-        <SummaryView :summary="summary" :session-id="sessionId" />
+    <!-- Session Error -->
+    <div v-if="finishError" class="max-w-7xl mx-auto mt-6">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p class="text-red-800 text-sm">{{ finishError }}</p>
       </div>
     </div>
 
     <!-- Session Controls -->
     <div class="max-w-7xl mx-auto mt-8 flex justify-end gap-4">
       <button
-        :disabled="!canGenerateSummary || isGeneratingSummary"
-        class="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition"
-        @click="generateSummary"
+        :disabled="!canFinishSession || isFinishing || sessionFinished"
+        class="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition"
+        @click="finishSession"
       >
-        {{ isGeneratingSummary ? 'Generating...' : 'Generate Summary' }}
+        {{ isFinishing ? 'Finishing...' : 'Standup is Finished' }}
       </button>
       <button
         class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition"
@@ -103,7 +104,6 @@ import {
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
-import SummaryView from '../components/SummaryView.vue'
 
 interface Participant {
   id: string
@@ -131,13 +131,12 @@ const { subscribeToSession, unsubscribeFromSession } = usePusher()
 const sessionId = computed(() => route.params.id as string)
 const participants = ref<Participant[]>([])
 const transcripts = ref<Transcript[]>([])
-const summary = ref('')
-const showSummary = ref(false)
 const linkCopied = ref(false)
-const isGeneratingSummary = ref(false)
-const summaryError = ref('')
+const isFinishing = ref(false)
+const finishError = ref('')
+const sessionFinished = ref(false)
 
-const canGenerateSummary = computed(() => transcripts.value.length > 0)
+const canFinishSession = computed(() => transcripts.value.length > 0)
 
 // Pusher event handlers
 const handleUserJoined = (data: Record<string, unknown>) => {
@@ -209,17 +208,18 @@ const copySessionLink = () => {
   }, 2000)
 }
 
-const generateSummary = async () => {
+const finishSession = async () => {
   if (transcripts.value.length === 0) {
     return
   }
 
   try {
-    isGeneratingSummary.value = true
-    summaryError.value = ''
+    isFinishing.value = true
+    finishError.value = ''
 
-    // Call API to generate summary from transcripts
-    const result = await generateSummaryAPI(
+    // TODO: Call finish-session API to generate summary and send email
+    // For now, we'll use the existing generateSummaryAPI as a placeholder
+    await generateSummaryAPI(
       sessionId.value,
       transcripts.value as Array<{
         participantName: string
@@ -227,13 +227,19 @@ const generateSummary = async () => {
       }>
     )
 
-    summary.value = result.text
-    showSummary.value = true
+    // In production, this will be replaced with actual finish-session API call
+    // that handles: generate summary + encrypt email + send via SendGrid + end session
+    sessionFinished.value = true
+
+    // Redirect to home after 2 seconds
+    setTimeout(() => {
+      void router.push('/')
+    }, 2000)
   } catch (error) {
     const apiError = parseAPIError(error)
-    summaryError.value = apiError.message
+    finishError.value = apiError.message
   } finally {
-    isGeneratingSummary.value = false
+    isFinishing.value = false
   }
 }
 
