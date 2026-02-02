@@ -14,7 +14,8 @@ A smart web application designed for remote teams to conduct efficient daily sta
 
 - Vue 3 + TypeScript + Vite + Tailwind CSS
 - Netlify (hosting + serverless functions)
-- Portkey API (GPT + Claude AI)
+- Deepgram (audio transcription)
+- Portkey API (Claude AI for summarization)
 - Pusher Channels (real-time sync)
 - SendGrid (email delivery)
 
@@ -116,7 +117,10 @@ VITE_PUSHER_CLUSTER=us2
 PUSHER_APP_ID=your_pusher_app_id
 PUSHER_SECRET=your_pusher_secret
 
-# Portkey (AI transcription & summarization) - Get from https://portkey.ai
+# Deepgram (audio transcription) - Get from https://console.deepgram.com
+DEEPGRAM_API_KEY=your_deepgram_key
+
+# Portkey (Claude AI for summarization) - Get from https://portkey.ai
 PORTKEY_API_KEY=your_portkey_key
 
 # SendGrid (email delivery) - Get from https://sendgrid.com
@@ -180,22 +184,34 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 - If exceeding 100 concurrent users
 - Paid tier starts at $49/month
 
-### Portkey API (AI Services)
+### Deepgram (Audio Transcription)
 
 **Free Tier:**
-- No limit, pay-as-you-go model
-- GPT: Usage-based pricing (via Portkey routing)
-- Claude: Usage-based pricing
+- 12,500 minutes/month (covers ~350 standups/month)
+- Supports: webm, mp3, mp4, wav
+- Accuracy: 97%+ for English
 
 **Typical Cost:**
-- 7-person standup, 2 min each: ~$0.15-0.30/day
-- Per month: ~$3-6 (assuming 20 working days)
+- Within free tier for most teams
+- If exceeded: ~$0.50-2.00 per 1K minutes
+- 7-person standup: ~14 min transcription/month
+
+**When to Upgrade:**
+- If exceeding 12,500 minutes/month
+- Paid tier starts at $0.50/1K minutes
+
+### Portkey API (Claude for Summarization)
+
+**Free Tier:**
+- Pay-as-you-go model
+- Claude 3.5 Sonnet: ~$0.003 per 1K input tokens
+
+**Typical Cost:**
+- 7-person standup, 100 tokens per transcript: ~$0.003/summary
+- Per month: <$0.20 (assuming 20 standups)
 
 **When to Optimize:**
-- If costs exceed $50/month, consider:
-  - Caching summaries for similar transcripts
-  - Batching multiple transcriptions
-  - Using Claude's cheaper models for summaries
+- Costs are minimal; no optimization needed for MVP
 
 ### SendGrid (Email Delivery)
 
@@ -213,14 +229,14 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 
 ### Total Monthly Cost (MVP)
 
-| Scale | Upstash | Pusher | Portkey | SendGrid | Total |
-|-------|---------|--------|---------|----------|-------|
-| 7-person, 1 standup | $0 | $0 | $6 | $0 | **$6/mo** |
-| 50-person, 2 standups | $0 | $0 | $48 | $0 | **$48/mo** |
-| 100-person, 5 standups | $0 | $0 | $150 | $9.95 | **$160/mo** |
-| 200-person, 10 standups | $10+ | $49 | $300+ | $59.95 | **$420+/mo** |
+| Scale | Upstash | Pusher | Deepgram | Portkey | SendGrid | Total |
+|-------|---------|--------|----------|---------|----------|----------|
+| 7-person, 1 standup | $0 | $0 | $0 | <$0.01 | $0 | **<$0.01/mo** |
+| 50-person, 2 standups | $0 | $0 | $0 | <$0.20 | $0 | **<$0.20/mo** |
+| 100-person, 5 standups | $0 | $0 | $0 | <$1 | $0 | **<$1/mo** |
+| 200-person, 10 standups | $0 | $49 | ~$1 | ~$5 | $9.95 | **~$65/mo** |
 
-**Note:** Costs will increase significantly beyond free tiers. Consider these expenses when planning to scale.
+**Note:** Deepgram free tier (12,500 min/month) covers up to 6,250 standups at 2 min per person. Most teams won't exceed free tier for years. Costs only increase if you exceed all free tiers at massive scale.
 
 ## Troubleshooting
 
@@ -250,4 +266,21 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 ### Pusher Connection Failed
 - **Problem**: Real-time sync not working
 - **Solution**: Verify `VITE_PUSHER_APP_KEY` and `VITE_PUSHER_CLUSTER` in `.env`
+
+### Transcription Failing (Audio Upload)
+- **Problem**: "Transcribe" button returns error
+- **Solution**:
+  1. Check that `.env` has `DEEPGRAM_API_KEY`
+  2. Verify API key is valid at https://console.deepgram.com/
+  3. Check audio file is <25MB
+  4. Verify Deepgram hasn't exceeded 12,500 min/month free tier
+  5. Check dev server logs: `npm run dev:netlify`
+
+### Summary Generation Failing
+- **Problem**: "Generate Summary" button returns error
+- **Solution**:
+  1. Check that `.env` has `PORTKEY_API_KEY`
+  2. Verify Portkey/Anthropic integration is connected
+  3. Check you have at least 1 transcript to summarize
+  4. Verify Anthropic API key is valid in Portkey vault
 

@@ -46,18 +46,24 @@
   - Connected Session.vue to real summarize API
   - Full error handling with user feedback
 
-### Transcription Debugging & Fix (Latest)
-- ✅ Discovered "Model is required" error from Portkey API
-- ✅ Root cause identified: Whisper model NOT available in Portkey account
-- ✅ Solution: Use multimodal GPT model for transcription instead
-  - Available models: GPT 5.2, 5.1, 4.1; Gemini 3, 2.5, etc.
-  - GPT and Gemini can process audio files as base64 and transcribe
-  - Keep using same PORTKEY_API_KEY for all AI operations (Portkey routes to GPT)
-- **NEXT**: Implement audio transcription via multimodal GPT
-  - Update `portkey-server.ts` transcribeAudio() function
-  - Convert audio buffer to base64 encoding
-  - Send to GPT model with transcription prompt
-  - Extract text from model response
+### Architecture Decision: Deepgram for Transcription (Latest)
+- ✅ Discovered Portkey Whisper requires OpenAI API key (not available)
+- ✅ Evaluated alternatives: Deepgram, AssemblyAI, browser Web Speech API
+- ✅ **Decision**: Use Deepgram for transcription
+  - **Why Deepgram**:
+    - Free tier: 12,500 minutes/month (covers ~350 standups/month)
+    - SOC 2 certified (enterprise-grade security)
+    - 97%+ accuracy for English speech
+    - 1-3 seconds latency (fastest in market)
+    - Supports multiple audio formats (webm, mp3, mp4, wav)
+  - **Why not others**:
+    - AssemblyAI: No free tier, pay-as-you-go expensive
+    - Browser Web Speech API: Less accurate, inconsistent across browsers
+    - Portkey/OpenAI: Requires external API key
+- **NEXT**: Implement Deepgram integration
+  - Create `netlify/functions/lib/deepgram-server.ts`
+  - Maintain same `transcribeAudio()` interface (frontend unchanged)
+  - Keep Portkey for Claude summarization only
   - Test transcription end-to-end
   - If successful, move to Phase 7 (Email Delivery)
 
@@ -98,43 +104,56 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ---
 
-## Phase 6: AI Integration ✅ **COMPLETED**
+## Phase 6: AI Integration ⏳ **IN PROGRESS**
 
-### 6.1 Portkey Setup ✅ (Revised)
+### 6.1 Audio Transcription with Deepgram ⏳ (NEW)
+- [ ] Create `netlify/functions/lib/deepgram-server.ts`
+  - Initialize with Deepgram API key
+  - Implement `transcribeAudio()` function
+  - Error handling and retry logic
+  - Logging for debugging
+- [ ] Update `netlify/functions/transcribe.ts`
+  - Change import from portkey-server to deepgram-server
+  - Keep same request/response interface
+- [ ] Add DEEPGRAM_API_KEY to `.env.example`
+- [ ] Test transcription end-to-end
+
+### 6.2 Portkey Setup ✅ (Revised for Summarization Only)
 - [x] Create `netlify/functions/lib/portkey-server.ts`
 - [x] Initialize with API key, configure Portkey routing
 - [x] Error handling, retry logic, logging
 - [x] Create `src/lib/portkey-types.ts`
-- [ ] **PENDING**: Update transcribeAudio() to use GPT multimodal
-  - Convert audio buffer to base64
+- [ ] **PENDING**: Update Portkey to use Claude for summarization ONLY
+  - Remove transcribeAudio() (now in deepgram-server)
+  - Keep generateSummary() function
   - Send to GPT 5.2 model (available in Portkey account)
   - Use prompt: "Transcribe the following audio to text. Return only the transcribed text."
   - Extract transcription from model response
 
-### 6.2 Transcription Function ✅
+### 6.3 Transcription Netlify Function ✅
 - [x] Create `netlify/functions/transcribe.ts`
 - [x] Accept multipart audio (max 25MB, webm/mp3/mp4/wav)
-- [x] Call GPT multimodal API, return transcript + language
 - [x] Error handling: 400 (invalid), 413 (too large), 502 (API fail)
 - [x] Multipart form parsing and session validation
-- [x] **Language Support**: en, de, fr, es, it, pt, ja, zh
+- [ ] **TODO**: Update to call deepgram-server instead of portkey-server
+- [x] **Language Support**: en, de, fr, es, it, pt, ja, zh (auto-detect)
 
-### 6.3 Summarization Function ✅
+### 6.4 Summarization Function ✅
 - [x] Create `netlify/functions/summarize.ts`
 - [x] Accept: `{sessionId, transcripts: [{name, text}]}`
-- [x] Call Claude with prompt for standup format
+- [x] Call Claude via Portkey with prompt for standup format
 - [x] Return formatted summary with language
 - [x] Error handling and validation
 - [x] **Language Support**: en, de, fr, es, it, pt, ja, zh
 
-### 6.4 Frontend API ✅
+### 6.5 Frontend AI API ✅
 - [x] Create `src/lib/ai-api.ts`
 - [x] `uploadAudio(sessionId, participantId, audioBlob)`
 - [x] `generateSummary(sessionId, transcripts)`
 - [x] Error handling, retry logic (3x with exponential backoff)
 - [x] Timeout handling (120s for long operations)
 
-### 6.5 Connect TalkSession ✅
+### 6.6 Connect TalkSession Component ✅
 - [x] Update `src/components/TalkSession.vue`:
 - [x] Add sessionId, userId, userName props
 - [x] Replace mock with real uploadAudio API

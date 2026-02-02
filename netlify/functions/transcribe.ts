@@ -1,7 +1,7 @@
 /**
  * Netlify Function: Transcribe Audio
  * POST /api/transcribe
- * Transcribes audio to text using Portkey Whisper API
+ * Transcribes audio to text using Deepgram STT API
  */
 
 import { Handler } from '@netlify/functions'
@@ -9,10 +9,10 @@ import { isValidSessionId, isValidUserName } from './lib/validation'
 import { sessionExists } from './lib/redis-client'
 import {
   transcribeAudio,
-  handlePortkeyError,
-  logPortkeyRequest,
-  isPortkeyConfigured,
-} from './lib/portkey-server'
+  handleDeepgramError,
+  logDeepgramRequest,
+  isDeepgramConfigured,
+} from './lib/deepgram-server'
 
 type AudioFormat = 'webm' | 'mp3' | 'mp4' | 'wav'
 
@@ -192,13 +192,13 @@ const handler: Handler = async event => {
   }
 
   try {
-    // Check if Portkey is configured
-    if (!isPortkeyConfigured()) {
+    // Check if Deepgram is configured
+    if (!isDeepgramConfigured()) {
       return {
         statusCode: 502,
         body: JSON.stringify({
-          error: 'AI service not configured',
-          code: 'PORTKEY_NOT_CONFIGURED',
+          error: 'Transcription service not configured',
+          code: 'DEEPGRAM_NOT_CONFIGURED',
         } as ErrorResponse),
       }
     }
@@ -281,7 +281,7 @@ const handler: Handler = async event => {
       }
     }
 
-    logPortkeyRequest('Transcribe request', {
+    logDeepgramRequest('Transcribe request', {
       sessionId,
       participantId,
       audioSize: audioBuffer.length,
@@ -289,7 +289,7 @@ const handler: Handler = async event => {
       language: language || 'auto-detect',
     })
 
-    // Transcribe audio using Portkey
+    // Transcribe audio using Deepgram
     const result = await transcribeAudio(audioBuffer, audioFormat, language)
 
     const response: TranscribeResponse = {
@@ -310,8 +310,8 @@ const handler: Handler = async event => {
   } catch (error) {
     console.error('[Transcribe] Error:', error)
 
-    // Handle Portkey-specific errors
-    const portKeyError = handlePortkeyError(error)
+    // Handle Deepgram-specific errors
+    const deepgramError = handleDeepgramError(error)
 
     const response: TranscribeResponse = {
       success: false,
@@ -320,13 +320,13 @@ const handler: Handler = async event => {
         language: 'en',
       },
       error: {
-        message: portKeyError.message,
-        code: portKeyError.code,
+        message: deepgramError.message,
+        code: deepgramError.code,
       },
     }
 
     return {
-      statusCode: portKeyError.status,
+      statusCode: deepgramError.status,
       body: JSON.stringify(response),
       headers: {
         'Content-Type': 'application/json',
