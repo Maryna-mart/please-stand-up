@@ -136,13 +136,14 @@ export async function transcribeAudio(
       })
 
       // Create message with audio and transcription prompt
-      const languageHint = language && language !== 'auto-detect' ? ` (Language: ${language})` : ''
+      const languageHint =
+        language && language !== 'auto-detect' ? ` (Language: ${language})` : ''
       const prompt = `Transcribe the following audio to text${languageHint}. Return ONLY the transcribed text, nothing else.`
 
       // Send to GPT model with audio as base64 content using vision API
       const response = await client.chat.completions.create(
         {
-          model: 'gpt-5-2', // Using GPT 5.2 for multimodal audio support
+          model: 'gpt-5.2', // Using GPT 5.2 for multimodal audio support (note: dot notation)
           max_tokens: 2048,
           messages: [
             {
