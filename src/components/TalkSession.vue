@@ -141,7 +141,12 @@ const progressPercent = computed(() => {
 })
 
 const canStartRecording = computed(() => {
-  return !isRunning.value && !isRecording.value && !hasTranscript.value
+  return (
+    !isRunning.value &&
+    !isRecording.value &&
+    !hasTranscript.value &&
+    !isTranscribing.value
+  )
 })
 
 const statusMessage = computed(() => {
