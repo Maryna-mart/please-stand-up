@@ -45,47 +45,48 @@
       </button>
     </div>
 
-    <!-- Main Talk Button -->
-    <div class="flex gap-2">
+    <!-- Status Message -->
+    <div class="text-center text-gray-700 font-medium">
+      {{ statusMessage }}
+    </div>
+
+    <!-- Main Action Button (One at a time) -->
+    <div>
+      <!-- Talk Button - shown when ready to record -->
       <button
-        v-if="!isRunning && !isRecording"
-        class="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
+        v-if="canStartRecording"
+        class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
         :disabled="!microphoneReady"
         @click="startTalk"
       >
         🎤 Talk ({{ formatTime(duration) }})
       </button>
+
+      <!-- Stop Button - shown while recording -->
       <button
-        v-if="isRunning || isRecording"
-        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
+        v-if="isRecording"
+        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
         @click="stopTalk"
       >
         ⏹️ Stop
       </button>
-      <button
-        v-if="!isRunning && !isRecording"
-        class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-        @click="reset"
-      >
-        Reset
-      </button>
-    </div>
 
-    <!-- Audio Playback & Upload -->
-    <div v-if="audioBlob" class="space-y-3">
-      <audio :src="audioUrl" controls class="w-full" />
+      <!-- Re-record Button - shown when transcript is ready -->
       <button
-        :disabled="isTranscribing"
-        class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition"
-        @click="uploadAudioToAPI"
+        v-if="hasTranscript && !isTranscribing"
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
+        @click="rerecord"
       >
-        {{ isTranscribing ? 'Transcribing...' : 'Transcribe' }}
+        🔄 Re-record
       </button>
+
+      <!-- Transcribing State - shown while transcription in progress -->
       <button
-        class="w-full bg-gray-400 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg transition"
-        @click="discardAudio"
+        v-if="isTranscribing"
+        disabled
+        class="w-full bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg cursor-not-allowed"
       >
-        Discard
+        ⏳ Transcribing...
       </button>
     </div>
 
@@ -135,6 +136,7 @@ const microphoneReady = ref(false)
 const microphoneError = ref('')
 const isTranscribing = ref(false)
 const transcriptionError = ref('')
+const hasTranscript = ref(false)
 
 let mediaRecorder: MediaRecorder | null = null
 let audioChunks: Blob[] = []
@@ -148,6 +150,29 @@ const timerStatus = computed(() => {
 
 const progressPercent = computed(() => {
   return ((props.duration - remaining.value) / props.duration) * 100
+})
+
+const canStartRecording = computed(() => {
+  return !isRunning.value && !isRecording.value && !hasTranscript.value
+})
+
+const statusMessage = computed(() => {
+  if (isRecording.value) {
+    return `Recording in progress... ${formatTime(recordingTime.value)}`
+  }
+  if (isTranscribing.value) {
+    return 'Transcribing your standup...'
+  }
+  if (hasTranscript.value) {
+    return '✓ Standup transcribed successfully'
+  }
+  if (audioBlob.value) {
+    return `Audio recorded (${formatFileSize(audioBlob.value.size)})`
+  }
+  if (transcriptionError.value) {
+    return `Error: ${transcriptionError.value}`
+  }
+  return 'Click Talk to start your standup'
 })
 
 const formatTime = (seconds: number): string => {
@@ -241,7 +266,7 @@ const startTalk = async () => {
   }, 1000)
 }
 
-const stopTalk = () => {
+const stopTalk = async () => {
   if (!isRunning.value && !isRecording.value) return
 
   // Stop timer
@@ -263,15 +288,24 @@ const stopTalk = () => {
   }
 
   emit('talk-stopped')
+
+  // Auto-transcribe after recording stops
+  // Give MediaRecorder time to process the audio blob
+  setTimeout(async () => {
+    if (audioBlob.value) {
+      await uploadAudioToAPI()
+    }
+  }, 500)
 }
 
-const reset = () => {
-  stopTalk()
-  remaining.value = props.duration
+const rerecord = () => {
+  // Clear transcript and audio, reset to ready state
+  hasTranscript.value = false
   audioBlob.value = null
   audioUrl.value = ''
   recordingTime.value = 0
   transcriptionError.value = ''
+  remaining.value = props.duration
 }
 
 const uploadAudioToAPI = async () => {
@@ -290,6 +324,7 @@ const uploadAudioToAPI = async () => {
       'webm'
     )
 
+    hasTranscript.value = true
     emit('transcript-ready', result.text)
   } catch (error) {
     const apiError = parseAPIError(error)
@@ -297,13 +332,6 @@ const uploadAudioToAPI = async () => {
   } finally {
     isTranscribing.value = false
   }
-}
-
-const discardAudio = () => {
-  audioBlob.value = null
-  audioUrl.value = ''
-  recordingTime.value = 0
-  transcriptionError.value = ''
 }
 
 onBeforeUnmount(() => {
