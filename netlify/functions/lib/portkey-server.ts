@@ -135,8 +135,9 @@ For each participant, extract:
 - 🎯 Today: What they plan to do today
 - 🚫 Blockers: Any blockers or challenges
 - 📌 Team Action Items: Any actions needed from the team
+- 📝 Other: Any other important information that doesn't fit the above categories
 
-Format the summary as a structured document with each person as a section.`
+Format the summary as a structured document with each person as a section. Include all information provided, even if it goes into the "Other" section.`
 
     const response = await portkey.chat.completions.create(
       {
@@ -155,8 +156,7 @@ Format the summary as a structured document with each person as a section.`
       }
     )
 
-    const summary =
-      response.choices?.[0]?.message?.content || ''
+    const summary = response.choices?.[0]?.message?.content || ''
 
     console.log('[Portkey] Summarization successful', {
       summaryLength: summary.length,

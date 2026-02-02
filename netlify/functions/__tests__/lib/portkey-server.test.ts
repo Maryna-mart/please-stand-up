@@ -61,7 +61,7 @@ describe('Portkey Server', () => {
     })
   })
 
-describe('Summarization Validation', () => {
+  describe('Summarization Validation', () => {
     it('should reject empty transcripts', async () => {
       await expect(generateSummary([])).rejects.toThrow(
         'No transcripts provided for summarization'

@@ -1,7 +1,97 @@
 <template>
   <div class="space-y-6">
-    <!-- Summary Content -->
-    <div v-if="summary" class="prose prose-sm max-w-none">
+    <!-- Parsed Summary Sections -->
+    <div v-if="summary && parsedSummary" class="space-y-6">
+      <!-- Per-Participant Cards -->
+      <div
+        v-for="participant in parsedSummary.participants"
+        :key="participant.name"
+        class="border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+      >
+        <!-- Participant Header -->
+        <div class="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b">
+          <h3 class="text-lg font-semibold text-gray-900">
+            {{ participant.name }}
+          </h3>
+        </div>
+
+        <!-- Participant Sections -->
+        <div class="divide-y">
+          <!-- Yesterday -->
+          <div
+            v-if="participant.sections.yesterday"
+            class="px-6 py-4 hover:bg-gray-50 transition"
+          >
+            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <span>✅</span>
+              <span>Yesterday</span>
+            </h4>
+            <p class="text-sm text-gray-700 leading-relaxed">
+              {{ participant.sections.yesterday }}
+            </p>
+          </div>
+
+          <!-- Today -->
+          <div
+            v-if="participant.sections.today"
+            class="px-6 py-4 hover:bg-gray-50 transition"
+          >
+            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <span>🎯</span>
+              <span>Today</span>
+            </h4>
+            <p class="text-sm text-gray-700 leading-relaxed">
+              {{ participant.sections.today }}
+            </p>
+          </div>
+
+          <!-- Blockers -->
+          <div
+            v-if="participant.sections.blockers"
+            class="px-6 py-4 bg-red-50 hover:bg-red-100 transition"
+          >
+            <h4 class="text-sm font-semibold text-red-900 mb-2 flex items-center gap-2">
+              <span>🚫</span>
+              <span>Blockers</span>
+            </h4>
+            <p class="text-sm text-red-800 leading-relaxed">
+              {{ participant.sections.blockers }}
+            </p>
+          </div>
+
+          <!-- Team Action Items -->
+          <div
+            v-if="participant.sections.actionItems"
+            class="px-6 py-4 bg-yellow-50 hover:bg-yellow-100 transition"
+          >
+            <h4 class="text-sm font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+              <span>📌</span>
+              <span>Team Action Items</span>
+            </h4>
+            <p class="text-sm text-yellow-800 leading-relaxed">
+              {{ participant.sections.actionItems }}
+            </p>
+          </div>
+
+          <!-- Other -->
+          <div
+            v-if="participant.sections.other"
+            class="px-6 py-4 bg-gray-50 hover:bg-gray-100 transition"
+          >
+            <h4 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <span>📝</span>
+              <span>Other</span>
+            </h4>
+            <p class="text-sm text-gray-700 leading-relaxed">
+              {{ participant.sections.other }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw Summary View (fallback if parsing fails) -->
+    <div v-else-if="summary" class="prose prose-sm max-w-none">
       <div
         class="bg-gray-50 rounded-lg p-6 whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed overflow-x-auto"
       >
@@ -97,7 +187,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { parseSummary, type ParsedSummary } from '../lib/summary-parser'
 
 interface Props {
   summary: string
@@ -115,6 +206,17 @@ const isSendingEmail = ref(false)
 const emailSuccess = ref(false)
 const emailError = ref('')
 const copySuccess = ref(false)
+
+// Parse summary into structured sections
+const parsedSummary = computed((): ParsedSummary | null => {
+  if (!props.summary) return null
+  try {
+    return parseSummary(props.summary)
+  } catch {
+    // If parsing fails, fall back to raw text display
+    return null
+  }
+})
 
 const handleSendEmail = async () => {
   try {
