@@ -81,9 +81,17 @@
     <!-- Transcription Error -->
     <div
       v-if="transcriptionError"
-      class="bg-red-50 border border-red-200 rounded p-3"
+      class="bg-red-50 border border-red-200 rounded p-3 space-y-3"
     >
-      <p class="text-red-800 text-sm">{{ transcriptionError }}</p>
+      <div class="flex justify-between items-start">
+        <p class="text-red-800 text-sm flex-1">{{ transcriptionError }}</p>
+        <button
+          class="text-red-600 hover:text-red-800 font-bold text-lg leading-none ml-2"
+          @click="clearError"
+        >
+          ✕
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -321,10 +329,19 @@ const uploadAudioToAPI = async () => {
     emit('transcript-ready', result.text)
   } catch (error) {
     const apiError = parseAPIError(error)
-    transcriptionError.value = apiError.message
+    // Ensure we always have a readable error message
+    const errorMessage =
+      typeof apiError.message === 'string' && apiError.message.trim().length > 0
+        ? apiError.message
+        : 'Oops, something went wrong. Please try again.'
+    transcriptionError.value = errorMessage
   } finally {
     isTranscribing.value = false
   }
+}
+
+const clearError = () => {
+  transcriptionError.value = ''
 }
 
 onBeforeUnmount(() => {
