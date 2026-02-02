@@ -14,7 +14,7 @@ A smart web application designed for remote teams to conduct efficient daily sta
 
 - Vue 3 + TypeScript + Vite + Tailwind CSS
 - Netlify (hosting + serverless functions)
-- Portkey API (Whisper + Claude AI)
+- Portkey API (GPT + Claude AI)
 - Pusher Channels (real-time sync)
 - SendGrid (email delivery)
 
@@ -184,12 +184,12 @@ This MVP uses **free/freemium tiers** designed for small teams. Here are the lim
 
 **Free Tier:**
 - No limit, pay-as-you-go model
-- Whisper: $0.02 per minute of audio
+- GPT: Usage-based pricing (via Portkey routing)
 - Claude: Usage-based pricing
 
 **Typical Cost:**
-- 7-person standup, 2 min each: ~$0.30/day
-- Per month: ~$6 (assuming 20 working days)
+- 7-person standup, 2 min each: ~$0.15-0.30/day
+- Per month: ~$3-6 (assuming 20 working days)
 
 **When to Optimize:**
 - If costs exceed $50/month, consider:

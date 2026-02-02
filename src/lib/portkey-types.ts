@@ -133,6 +133,6 @@ export interface PortkeyConfig {
   apiKey?: string
   retryAttempts?: number
   timeoutMs?: number
-  whisperModel?: string
+  gptModel?: string
   claudeModel?: string
 }

@@ -48,13 +48,18 @@
 
 ### Transcription Debugging & Fix (Latest)
 - ✅ Discovered "Model is required" error from Portkey API
-- ✅ Fixed model name: changed from `'openai/whisper-1'` to `'whisper-1'`
-- ✅ Added detailed raw fetch logging to capture full HTTP responses
-- **NEXT**: Test transcription end-to-end with the fix
-  - Record audio and verify transcription works
-  - Check logs for any new errors
+- ✅ Root cause identified: Whisper model NOT available in Portkey account
+- ✅ Solution: Use multimodal GPT model for transcription instead
+  - Available models: GPT 5.2, 5.1, 4.1; Gemini 3, 2.5, etc.
+  - GPT and Gemini can process audio files as base64 and transcribe
+  - Keep using same PORTKEY_API_KEY for all AI operations (Portkey routes to GPT)
+- **NEXT**: Implement audio transcription via multimodal GPT
+  - Update `portkey-server.ts` transcribeAudio() function
+  - Convert audio buffer to base64 encoding
+  - Send to GPT model with transcription prompt
+  - Extract text from model response
+  - Test transcription end-to-end
   - If successful, move to Phase 7 (Email Delivery)
-  - If issues persist, logs will show actual error messages from Portkey
 
 ---
 
@@ -95,17 +100,21 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 
 ## Phase 6: AI Integration ✅ **COMPLETED**
 
-### 6.1 Portkey Setup ✅
+### 6.1 Portkey Setup ✅ (Revised)
 - [x] Create `netlify/functions/lib/portkey-server.ts`
-- [x] Initialize with API key, configure Whisper + Claude
+- [x] Initialize with API key, configure Portkey routing
 - [x] Error handling, retry logic, logging
 - [x] Create `src/lib/portkey-types.ts`
-- [x] Unit tests: initialization, errors, retries
+- [ ] **PENDING**: Update transcribeAudio() to use GPT multimodal
+  - Convert audio buffer to base64
+  - Send to GPT 5.2 model (available in Portkey account)
+  - Use prompt: "Transcribe the following audio to text. Return only the transcribed text."
+  - Extract transcription from model response
 
 ### 6.2 Transcription Function ✅
 - [x] Create `netlify/functions/transcribe.ts`
 - [x] Accept multipart audio (max 25MB, webm/mp3/mp4/wav)
-- [x] Call Whisper API, return transcript + language
+- [x] Call GPT multimodal API, return transcript + language
 - [x] Error handling: 400 (invalid), 413 (too large), 502 (API fail)
 - [x] Multipart form parsing and session validation
 - [x] **Language Support**: en, de, fr, es, it, pt, ja, zh
@@ -186,7 +195,7 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - [ ] Show all services: Frontend (Vue), Backend (Netlify), Redis, Pusher, Portkey, SendGrid
 - [ ] Document data flow for key operations:
   - Session creation → Redis storage → Pusher broadcast
-  - Audio recording → Portkey/Whisper → Transcript storage
+  - Audio recording → Portkey/GPT → Transcript storage
   - Summary generation → Claude → Email delivery
 - [ ] Include security layers (PBKDF2, rate limiting, XSS prevention)
 
@@ -282,9 +291,8 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
   - [ ] API response times <2s
   - [ ] Transcription <60s for 2min audio
 - [ ] Cost audit:
-  - [ ] Portkey: ~$0.50/hour usage
-  - [ ] OpenAI Whisper: $0.02/min audio
-  - [ ] Claude: $0.003/K input tokens
+  - [ ] Portkey: ~$0.50/hour usage (for GPT + Claude)
+  - [ ] Claude: $0.003/K input tokens (for summaries)
   - [ ] Total estimated: <$10/month
 
 ### Netlify Deployment
@@ -360,18 +368,26 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 ### Local Development
 Create `.env.local` file (in `.gitignore`):
 ```bash
-PORTKEY_API_KEY=pk-your-actual-key
+# Portkey API (for GPT transcription + Claude summarization)
+PORTKEY_API_KEY=pk-your-portkey-key
+
+# Storage
 UPSTASH_REDIS_REST_URL=https://xxxxx.upstash.io
 UPSTASH_REDIS_REST_TOKEN=your_token
+
+# Real-time
 VITE_PUSHER_APP_KEY=your_key
 VITE_PUSHER_CLUSTER=your_cluster
 PUSHER_APP_ID=your_id
 PUSHER_SECRET=your_secret
+
+# Security
+SESSION_SECRET=your-random-32-char-string
 ```
 
 ### Production (Netlify)
 Set via **Site Settings** → **Build & deploy** → **Environment**:
-- `PORTKEY_API_KEY` - Portkey API key (for Whisper + Claude)
+- `PORTKEY_API_KEY` - Portkey API key (for GPT + Claude)
 - `UPSTASH_REDIS_REST_URL` - Redis URL
 - `UPSTASH_REDIS_REST_TOKEN` - Redis token
 - All Pusher keys

@@ -54,9 +54,9 @@ This guide walks you through setting up all required external services for local
 
 ---
 
-### 3. Portkey (AI: Whisper + Claude) ⚠️ **REQUIRED FOR MVP**
+### 3. Portkey (AI: GPT + Claude) ⚠️ **REQUIRED FOR MVP**
 
-**Purpose**: Audio transcription (Whisper) + Summary generation (Claude)
+**Purpose**: Audio transcription via GPT (multimodal) + Summary generation (Claude)
 
 #### Setup Steps:
 
@@ -70,11 +70,10 @@ This guide walks you through setting up all required external services for local
    - Name: `please-stand-up-dev`
    - Copy the generated key (starts with `pk-...`)
 
-3. **Add OpenAI Integration** (for Whisper)
+3. **Add GPT Integration** (for multimodal transcription)
    - Click "Integrations" in sidebar
-   - Find "OpenAI" and click "Connect"
-   - Enter your OpenAI API key (get from https://platform.openai.com/api-keys)
-   - Or skip if you already have OpenAI connected
+   - Find "OpenAI" and verify GPT models are available (you have access to GPT 5.2, etc.)
+   - If needed, connect your OpenAI account or add API key
 
 4. **Add Anthropic Integration** (for Claude)
    - In "Integrations", find "Anthropic"
@@ -89,11 +88,11 @@ This guide walks you through setting up all required external services for local
    ```
 
 6. **Cost Estimation**
-   - **Whisper**: ~$0.006 per minute of audio
-     - 10 participants × 2 min/person = 20 min → ~$0.12 per standup
+   - **GPT (multimodal)**: ~$0.005-0.015 per transcription
+     - 10 participants × 2 min/person → ~$0.10-0.15 per standup
    - **Claude**: ~$0.01 per summary
-   - **Total per standup**: ~$0.13
-   - **Monthly (20 standups)**: ~$2.60
+   - **Total per standup**: ~$0.11-0.25
+   - **Monthly (20 standups)**: ~$2-5
 
 ---
 
@@ -160,7 +159,7 @@ VITE_PUSHER_CLUSTER=us2
 PUSHER_APP_ID=your_app_id_here
 PUSHER_SECRET=your_pusher_secret_here
 
-# Portkey (AI transcription & summarization)
+# Portkey (GPT for transcription & Claude for summarization)
 PORTKEY_API_KEY=pk-your-portkey-api-key-here
 
 # SendGrid (Email delivery)
@@ -215,7 +214,7 @@ npm run dev:netlify
 |---------|-----------|----------------------------|
 | Upstash Redis | 10,000 req/day | $0-10 |
 | Pusher Channels | 200K msgs/day, 100 concurrent | $0 (within limits) |
-| Portkey (OpenAI+Anthropic) | Usage-based | ~$2-10 (20 standups/month) |
+| Portkey (GPT+Anthropic) | Usage-based | ~$2-5 (20 standups/month) |
 | SendGrid | 100 emails/day | $0 (within limits) |
 | **TOTAL** | **FREE** | **~$2-20/month** |
 
@@ -229,9 +228,10 @@ npm run dev:netlify
 - Check browser console for Pusher errors
 
 ### Portkey API Errors
-- Verify OpenAI and Anthropic integrations are active
+- Verify GPT and Anthropic integrations are active
 - Check API key starts with `pk-`
-- Ensure audio file is <25MB (Whisper limit)
+- Ensure audio file is <25MB
+- Check that GPT multimodal models are available in your account
 
 ### SendGrid Email Not Received
 - Check sender email is verified

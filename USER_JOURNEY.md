@@ -21,7 +21,7 @@ Visual feedback: Recording status, timer countdown
 Participants can see who's recording vs. who's done
 4. Transcription Phase
 After recording, participant clicks "Transcribe"
-Audio uploaded to Netlify Function → Whisper API
+Audio uploaded to Netlify Function → GPT API (via Portkey)
 Transcript appears in real-time for all participants
 Language auto-detected (German/English)
 5. Summary Generation
