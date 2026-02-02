@@ -25,7 +25,10 @@
       <!-- Structured Sections -->
       <div class="space-y-4">
         <!-- Yesterday Section -->
-        <div v-if="parsedTranscripts[index]?.sections.yesterday" class="space-y-1">
+        <div
+          v-if="parsedTranscripts[index]?.sections.yesterday"
+          class="space-y-1"
+        >
           <h4 class="font-semibold text-gray-900 flex items-center gap-2">
             <span>✅ Yesterday</span>
           </h4>
@@ -45,7 +48,10 @@
         </div>
 
         <!-- Blockers Section -->
-        <div v-if="parsedTranscripts[index]?.sections.blockers" class="space-y-1">
+        <div
+          v-if="parsedTranscripts[index]?.sections.blockers"
+          class="space-y-1"
+        >
           <h4 class="font-semibold text-gray-900 flex items-center gap-2">
             <span>🚫 Blockers</span>
           </h4>
@@ -96,7 +102,10 @@
       </div>
 
       <!-- Duration -->
-      <p v-if="transcript.duration" class="text-xs text-gray-500 mt-4 pt-3 border-t">
+      <p
+        v-if="transcript.duration"
+        class="text-xs text-gray-500 mt-4 pt-3 border-t"
+      >
         Duration: {{ formatDuration(transcript.duration) }}
       </p>
     </div>
@@ -151,7 +160,9 @@ const parsedTranscripts = computed(() => {
   return props.transcripts.map(transcript => {
     const parsed = parseSummary(transcript.text)
     // Return the first participant's sections if available
-    return parsed.participants[0] || { name: '', sections: {} as SummarySection }
+    return (
+      parsed.participants[0] || { name: '', sections: {} as SummarySection }
+    )
   })
 })
 

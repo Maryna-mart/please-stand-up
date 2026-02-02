@@ -98,6 +98,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import { usePusher } from '../composables/usePusher'
 import { finishSession as finishSessionAPI, parseAPIError } from '../lib/ai-api'
+import { parseSummary } from '../lib/summary-parser'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
@@ -215,7 +216,7 @@ const finishSession = async () => {
     finishError.value = ''
 
     // Call finish-session API to generate summary from transcripts
-    const summary = await finishSessionAPI(
+    const rawText = await finishSessionAPI(
       sessionId.value,
       transcripts.value as Array<{
         participantName: string
@@ -223,14 +224,15 @@ const finishSession = async () => {
       }>
     )
 
+    // Parse the raw summary text into structured sections
+    const parsed = parseSummary(rawText)
+
     // Replace raw transcripts with structured summary
     // so TranscriptView displays the formatted sections immediately
-    transcripts.value = summary.participants.map(
-      (p: { name: string; sections: Record<string, string | undefined> }) => ({
-        participantName: p.name,
-        text: formatSummaryAsText(p.sections),
-      })
-    )
+    transcripts.value = parsed.participants.map(p => ({
+      participantName: p.name,
+      text: formatSummaryAsText(p.sections),
+    }))
 
     // Summary generated and session updated
     sessionFinished.value = true

@@ -9,7 +9,6 @@ import { getSession, updateSession } from './lib/redis-client'
 import { isValidSessionId } from './lib/validation'
 import { summarizeTranscripts } from './lib/portkey-server'
 import { sendSummaryEmails, isSendGridConfigured } from './lib/sendgrid-client'
-import { parseSummary } from '../../src/lib/summary-parser'
 import { decryptEmail, deserializeEncryptedEmail } from './lib/email-crypto'
 
 interface FinishSessionRequest {
@@ -23,19 +22,7 @@ interface FinishSessionRequest {
 interface FinishSessionResponse {
   success: boolean
   sessionId: string
-  summary: {
-    rawText: string
-    participants: Array<{
-      name: string
-      sections: {
-        yesterday?: string
-        today?: string
-        blockers?: string
-        actionItems?: string
-        other?: string
-      }
-    }>
-  }
+  rawText: string
 }
 
 interface ErrorResponse {
@@ -141,9 +128,6 @@ const handler: Handler = async event => {
       }
     }
 
-    // Parse summary into structured sections
-    const parsedSummary = parseSummary(summaryText)
-
     // Update session with summary
     const updateSuccess = await updateSession(sessionId, {
       summary: summaryText,
@@ -163,7 +147,7 @@ const handler: Handler = async event => {
 
     console.log('[finish-session] Session finished successfully', {
       sessionId,
-      participantCount: parsedSummary.participants.length,
+      summaryLength: summaryText.length,
     })
 
     // Send emails if SendGrid is configured
@@ -212,10 +196,11 @@ const handler: Handler = async event => {
           }
         }
 
-        // Send emails to all recipients
+        // Send emails to all recipients with raw summary
+        // Frontend will handle parsing for display
         if (recipients.length > 0) {
           const emailResults = await sendSummaryEmails(recipients, sessionId, {
-            participants: parsedSummary.participants,
+            participants: [],
           })
 
           console.log('[finish-session] Email send results', {
@@ -235,10 +220,7 @@ const handler: Handler = async event => {
     const response: FinishSessionResponse = {
       success: true,
       sessionId,
-      summary: {
-        rawText: summaryText,
-        participants: parsedSummary.participants,
-      },
+      rawText: summaryText,
     }
 
     return {

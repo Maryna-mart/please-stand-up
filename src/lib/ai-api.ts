@@ -198,19 +198,7 @@ export async function generateSummary(
 export async function finishSession(
   sessionId: string,
   transcripts: Transcript[]
-): Promise<{
-  rawText: string
-  participants: Array<{
-    name: string
-    sections: {
-      yesterday?: string
-      today?: string
-      blockers?: string
-      actionItems?: string
-      other?: string
-    }
-  }>
-}> {
+): Promise<string> {
   // Validate inputs
   if (!sessionId) {
     throw new Error('Session ID is required')
@@ -256,27 +244,15 @@ export async function finishSession(
 
     const data = (await response.json()) as {
       success?: boolean
-      summary?: {
-        rawText: string
-        participants: Array<{
-          name: string
-          sections: {
-            yesterday?: string
-            today?: string
-            blockers?: string
-            actionItems?: string
-            other?: string
-          }
-        }>
-      }
+      rawText?: string
       error?: { message: string; code: string }
     }
 
-    if (!data.success || !data.summary) {
+    if (!data.success || !data.rawText) {
       throw new Error(data.error?.message || 'Session finish failed')
     }
 
-    return data.summary
+    return data.rawText
   } catch (error) {
     clearTimeout(timeoutId)
 
