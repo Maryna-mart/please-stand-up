@@ -5,11 +5,16 @@
  */
 
 import OpenAI from 'openai'
+import { createHeaders } from 'portkey-ai'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 // Configuration constants
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 1000
 const REQUEST_TIMEOUT_MS = 60000 // 60 seconds for AI operations
+const PORTKEY_GATEWAY_URL = 'https://api.portkey.ai/v1'
 
 interface TranscriptionResult {
   text: string
@@ -41,17 +46,20 @@ function validateConfig(): void {
 }
 
 /**
- * Initialize OpenAI client configured for Portkey
- * @returns Configured OpenAI client instance
+ * Initialize OpenAI client configured for Portkey gateway
+ * @returns Configured OpenAI client instance with Portkey authentication
  */
 function initializePortkey(): OpenAI {
   validateConfig()
 
-  const apiKey = process.env.PORTKEY_API_KEY!
+  const portKeyApiKey = process.env.PORTKEY_API_KEY!
 
   return new OpenAI({
-    apiKey,
-    baseURL: 'https://api.portkey.ai/v1',
+    apiKey: 'dummy',
+    baseURL: PORTKEY_GATEWAY_URL,
+    defaultHeaders: createHeaders({
+      apiKey: portKeyApiKey,
+    }),
   })
 }
 
@@ -126,68 +134,54 @@ export async function transcribeAudio(
       language: language || 'auto-detect',
     })
 
-    try {
-      // Convert audio buffer to base64
-      const audioBase64 = audioBuffer.toString('base64')
+    // Write buffer to temporary file and use fs.createReadStream() like Portkey docs
+    const tempDir = os.tmpdir()
+    const tempFileName = `audio-${Date.now()}.${audioFormat}`
+    const tempFilePath = path.join(tempDir, tempFileName)
 
-      console.log('[Portkey] Audio converted to base64', {
-        base64Length: audioBase64.length,
-        audioFormat,
+    try {
+      // Write audio buffer to temporary file
+      fs.writeFileSync(tempFilePath, audioBuffer)
+      console.log('[Portkey] Created temporary audio file', {
+        path: tempFilePath,
+        size: audioBuffer.length,
       })
 
-      // Create message with audio and transcription prompt
-      const languageHint =
-        language && language !== 'auto-detect' ? ` (Language: ${language})` : ''
-      const prompt = `Transcribe the following audio to text${languageHint}. Return ONLY the transcribed text, nothing else.`
+      // Use audio.transcriptions.create() API for speech-to-text via Portkey
+      // Following exact pattern from Portkey docs
+      const startTime = Date.now()
+      console.log('[Portkey] Sending transcription request to Portkey audio API...')
 
-      // Send to GPT model with audio as base64 content using vision API
-      const response = await client.chat.completions.create(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response = await (client.audio.transcriptions.create as any)(
         {
-          model: 'gpt-5.2', // Using GPT 5.2 for multimodal audio support (note: dot notation)
-          max_tokens: 2048,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: prompt,
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:audio/${audioFormat};base64,${audioBase64}`,
-                  },
-                },
-              ],
-            },
-          ],
+          file: fs.createReadStream(tempFilePath),
+          model: 'whisper-1',
+          language: language && language !== 'auto-detect' ? language : undefined,
         },
         {
           timeout: REQUEST_TIMEOUT_MS,
         }
       )
 
-      // Extract text from GPT response
-      let transcriptionText = ''
-      if (response.choices && response.choices.length > 0) {
-        const content = response.choices[0].message.content
-        if (typeof content === 'string') {
-          transcriptionText = content
-        }
-      }
+      const duration = Date.now() - startTime
+      console.log('[Portkey] Transcription API response received', {
+        durationMs: duration,
+        hasText: !!response.text,
+        textLength: response.text?.length || 0,
+      })
 
-      if (!transcriptionText || transcriptionText.trim().length === 0) {
-        throw new Error('No transcription text in GPT response')
+      if (!response.text || response.text.trim().length === 0) {
+        throw new Error('No transcription text in response')
       }
 
       console.log('[Portkey] Transcription successful', {
-        textLength: transcriptionText.length,
-        language: language || 'detected',
+        textLength: response.text.length,
+        language: language || 'auto-detect',
       })
 
       return {
-        text: transcriptionText.trim(),
+        text: response.text.trim(),
         language: language || 'en',
       }
     } catch (error) {
@@ -199,6 +193,16 @@ export async function transcribeAudio(
         status: (error as any).status,
       })
       throw error
+    } finally {
+      // Clean up temporary file
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath)
+          console.log('[Portkey] Cleaned up temporary file')
+        }
+      } catch (cleanupError) {
+        console.error('[Portkey] Failed to clean up temporary file:', cleanupError)
+      }
     }
   })
 }
