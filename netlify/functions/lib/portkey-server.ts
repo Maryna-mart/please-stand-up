@@ -143,8 +143,11 @@ Format the summary as a structured document with each person as a section. Inclu
       {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 2048,
-        system: systemPrompt,
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
           {
             role: 'user',
             content: `Please summarize this standup meeting:\n\n${transcriptText}`,
@@ -199,24 +202,30 @@ export async function summarizeIndividualTranscript(
       textLength: transcriptText.length,
     })
 
-    const systemPrompt = `You are a standup meeting summarizer. Extract information from a standup update into these categories:
-- yesterday: What was completed
-- today: What is planned
-- blockers: Any obstacles or blockers
-- actionItems: Actions needed from the team
-- other: Any other important points
+    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content):
 
-Return ONLY a valid JSON object with these exact keys. Include only keys that have content.`
+{
+  "yesterday": "What they completed yesterday",
+  "today": "What they plan to do today",
+  "blockers": "Any blockers or challenges",
+  "actionItems": "Any actions needed from the team",
+  "other": "Any other important information"
+}
+
+Be concise and extract only the most important points. Return ONLY valid JSON, no additional text.`
 
     const response = await portkey.chat.completions.create(
       {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1024,
-        system: systemPrompt,
         messages: [
           {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
             role: 'user',
-            content: `Extract standup info from this and return ONLY JSON:\n\n${transcriptText}`,
+            content: `${transcriptText}`,
           },
         ],
       },
@@ -232,7 +241,7 @@ Return ONLY a valid JSON object with these exact keys. Include only keys that ha
       throw new Error('No summary content received from Claude')
     }
 
-    console.log('[Portkey] Raw response from Claude:', responseText.substring(0, 200))
+    console.log('[Portkey] Raw response from Claude:', responseText.substring(0, 500))
 
     // Parse the JSON response - try to extract JSON if wrapped in markdown
     let sections: {
@@ -252,11 +261,17 @@ Return ONLY a valid JSON object with these exact keys. Include only keys that ha
         try {
           sections = JSON.parse(jsonMatch[1])
         } catch {
-          console.error('[Portkey] Failed to parse extracted JSON:', jsonMatch[1].substring(0, 200))
+          console.error(
+            '[Portkey] Failed to parse extracted JSON:',
+            jsonMatch[1].substring(0, 200)
+          )
           sections = {}
         }
       } else {
-        console.error('[Portkey] Failed to parse JSON and no code blocks found:', responseText.substring(0, 200))
+        console.error(
+          '[Portkey] Failed to parse JSON and no code blocks found:',
+          responseText.substring(0, 200)
+        )
         sections = {}
       }
     }
@@ -306,8 +321,11 @@ Format the summary as a structured document with each person as a section. Inclu
       {
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 2048,
-        system: systemPrompt,
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
           {
             role: 'user',
             content: `Please summarize this standup meeting:\n\n${transcriptText}`,

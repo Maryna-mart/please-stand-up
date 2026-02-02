@@ -31,12 +31,11 @@
             :session-id="sessionId"
             :user-id="userId"
             :user-name="userName"
+            :summarizing="isSummarizingInProgress"
             @talk-started="onTalkStarted"
             @talk-stopped="onTalkStopped"
             @talk-ended="onTalkEnded"
             @transcript-ready="onTranscriptReady"
-            @summarizing-started="onSummarizingStarted"
-            @summarizing-ended="onSummarizingEnded"
           />
         </div>
       </div>
@@ -49,11 +48,11 @@
         </div>
       </div>
 
-      <!-- Right Column: Transcripts & Summary -->
+      <!-- Right Column: Summaries -->
       <div class="lg:col-span-1 space-y-6">
-        <!-- Transcripts Section -->
+        <!-- Summaries Section -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-bold text-gray-900 mb-4">Transcripts</h2>
+          <h2 class="text-xl font-bold text-gray-900 mb-4">Summaries</h2>
           <TranscriptView :transcripts="transcripts" />
         </div>
       </div>
@@ -139,6 +138,7 @@ const linkCopied = ref(false)
 const isFinishing = ref(false)
 const finishError = ref('')
 const sessionFinished = ref(false)
+const isSummarizingInProgress = ref(false)
 
 const canFinishSession = computed(() => transcripts.value.length > 0)
 
@@ -196,15 +196,9 @@ const onTalkEnded = () => {
   // Talk ended event handler
 }
 
-const onSummarizingStarted = () => {
-  // Summarization started - button is now disabled
-}
-
-const onSummarizingEnded = () => {
-  // Summarization completed or failed
-}
-
 const onTranscriptReady = async (transcriptText: string) => {
+  isSummarizingInProgress.value = true
+
   try {
     // Immediately summarize the transcript to show structured sections
     const sections = await summarizeTranscript(
@@ -220,18 +214,14 @@ const onTranscriptReady = async (transcriptText: string) => {
       participantName: userName.value || 'Anonymous',
       text: formattedText,
     })
-
-    // Summarization succeeded
-    onSummarizingEnded()
   } catch {
     // If summarization fails, fall back to raw text
     transcripts.value.push({
       participantName: userName.value || 'Anonymous',
       text: transcriptText,
     })
-
-    // Summarization failed
-    onSummarizingEnded()
+  } finally {
+    isSummarizingInProgress.value = false
   }
 }
 

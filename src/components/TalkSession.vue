@@ -33,11 +33,6 @@
       </button>
     </div>
 
-    <!-- Status Message -->
-    <div class="text-center text-gray-700 font-medium">
-      {{ statusMessage }}
-    </div>
-
     <!-- Main Action Button (One at a time) -->
     <div>
       <!-- Talk Button - shown when ready to record -->
@@ -61,7 +56,7 @@
 
       <!-- Re-record Button - shown when transcript is ready -->
       <button
-        v-if="hasTranscript && !isTranscribing"
+        v-if="hasTranscript && !isTranscribing && !props.summarizing"
         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-4 rounded-lg transition text-lg"
         @click="rerecord"
       >
@@ -74,7 +69,16 @@
         disabled
         class="w-full bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg cursor-not-allowed"
       >
-        ⏳ Transcribing...
+        ⏳ Transcribing your status...
+      </button>
+
+      <!-- Summarizing State - shown while summarization in progress -->
+      <button
+        v-if="props.summarizing && hasTranscript"
+        disabled
+        class="w-full bg-gray-400 text-white font-semibold py-4 px-4 rounded-lg transition text-lg cursor-not-allowed"
+      >
+        ⏳ Summarizing your status...
       </button>
     </div>
 
@@ -105,10 +109,12 @@ interface Props {
   sessionId: string
   userId: string
   userName: string
+  summarizing?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   duration: 120,
+  summarizing: false,
 })
 
 const emit = defineEmits<{
@@ -116,8 +122,6 @@ const emit = defineEmits<{
   'talk-started': []
   'talk-stopped': []
   'talk-ended': []
-  'summarizing-started': []
-  'summarizing-ended': []
 }>()
 
 // Timer state
@@ -133,7 +137,6 @@ const audioUrl = ref('')
 const microphoneReady = ref(false)
 const microphoneError = ref('')
 const isTranscribing = ref(false)
-const isSummarizing = ref(false)
 const transcriptionError = ref('')
 const hasTranscript = ref(false)
 
@@ -157,44 +160,14 @@ const canStartRecording = computed(() => {
     !isRecording.value &&
     !hasTranscript.value &&
     !isTranscribing.value &&
-    !isSummarizing.value
+    !props.summarizing
   )
-})
-
-const statusMessage = computed(() => {
-  if (isRecording.value) {
-    return `Recording in progress... ${formatTime(recordingTime.value)}`
-  }
-  if (isTranscribing.value) {
-    return 'Transcribing your standup...'
-  }
-  if (isSummarizing.value) {
-    return 'Summarizing your standup...'
-  }
-  if (hasTranscript.value) {
-    return '✓ Standup transcribed successfully'
-  }
-  if (audioBlob.value) {
-    return `Audio recorded (${formatFileSize(audioBlob.value.size)})`
-  }
-  if (transcriptionError.value) {
-    return `Oops, something went wrong. Try again.`
-  }
-  return 'Click Talk to start your standup'
 })
 
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${mins}:${secs.toString().padStart(2, '0')}`
-}
-
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
 const initializeMicrophone = async () => {
@@ -331,10 +304,6 @@ const uploadAudioToAPI = async () => {
       audioBlob.value,
       'webm'
     )
-
-    // Signal that summarization is starting
-    isSummarizing.value = true
-    emit('summarizing-started')
 
     hasTranscript.value = true
     emit('transcript-ready', result.text)
