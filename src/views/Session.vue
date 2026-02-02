@@ -98,7 +98,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import { usePusher } from '../composables/usePusher'
 import {
-  generateSummary as generateSummaryAPI,
+  finishSession as finishSessionAPI,
   parseAPIError,
 } from '../lib/ai-api'
 import TalkSession from '../components/TalkSession.vue'
@@ -217,9 +217,8 @@ const finishSession = async () => {
     isFinishing.value = true
     finishError.value = ''
 
-    // TODO: Call finish-session API to generate summary and send email
-    // For now, we'll use the existing generateSummaryAPI as a placeholder
-    await generateSummaryAPI(
+    // Call finish-session API to generate summary from transcripts
+    await finishSessionAPI(
       sessionId.value,
       transcripts.value as Array<{
         participantName: string
@@ -227,8 +226,7 @@ const finishSession = async () => {
       }>
     )
 
-    // In production, this will be replaced with actual finish-session API call
-    // that handles: generate summary + encrypt email + send via SendGrid + end session
+    // Summary generated and session updated
     sessionFinished.value = true
 
     // Redirect to home after 2 seconds

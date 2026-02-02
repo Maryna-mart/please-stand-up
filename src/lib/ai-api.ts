@@ -190,6 +190,105 @@ export async function generateSummary(
 }
 
 /**
+ * Finish session by generating summary from transcripts
+ * @param sessionId - Session ID
+ * @param transcripts - Array of participant transcripts
+ * @returns Summary with structured sections
+ */
+export async function finishSession(
+  sessionId: string,
+  transcripts: Transcript[]
+): Promise<{
+  rawText: string
+  participants: Array<{
+    name: string
+    sections: {
+      yesterday?: string
+      today?: string
+      blockers?: string
+      actionItems?: string
+      other?: string
+    }
+  }>
+}> {
+  // Validate inputs
+  if (!sessionId) {
+    throw new Error('Session ID is required')
+  }
+
+  if (!Array.isArray(transcripts) || transcripts.length === 0) {
+    throw new Error('At least one transcript is required')
+  }
+
+  for (const transcript of transcripts) {
+    if (!transcript.participantName || !transcript.text) {
+      throw new Error('Each transcript must have participant name and text')
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const response = await fetch('/.netlify/functions/finish-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        transcripts,
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as {
+        error?: string
+        code?: string
+      }
+      const err = new Error(error.error || 'Session finish failed')
+      ;(err as Error & { status?: number }).status = response.status
+      throw err
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean
+      summary?: {
+        rawText: string
+        participants: Array<{
+          name: string
+          sections: {
+            yesterday?: string
+            today?: string
+            blockers?: string
+            actionItems?: string
+            other?: string
+          }
+        }>
+      }
+      error?: { message: string; code: string }
+    }
+
+    if (!data.success || !data.summary) {
+      throw new Error(data.error?.message || 'Session finish failed')
+    }
+
+    return data.summary
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Session finish request timeout')
+    }
+
+    throw error
+  }
+}
+
+/**
  * Parse API error response
  * @param error - Error object
  * @returns Formatted API error
