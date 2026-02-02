@@ -265,6 +265,82 @@ export async function finishSession(
 }
 
 /**
+ * Summarize a single participant's transcript immediately after transcription
+ * @param participantName - Name of the participant
+ * @param transcriptText - Raw transcript text to summarize
+ * @returns Structured summary sections for immediate display
+ */
+export async function summarizeTranscript(
+  participantName: string,
+  transcriptText: string
+): Promise<{
+  yesterday?: string
+  today?: string
+  blockers?: string
+  actionItems?: string
+  other?: string
+}> {
+  if (!participantName || !transcriptText) {
+    throw new Error('Participant name and transcript text are required')
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const response = await fetch('/.netlify/functions/summarize-transcript', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        participantName,
+        transcriptText,
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as {
+        error?: string
+        code?: string
+      }
+      const err = new Error(error.error || 'Transcript summarization failed')
+      ;(err as Error & { status?: number }).status = response.status
+      throw err
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean
+      sections?: {
+        yesterday?: string
+        today?: string
+        blockers?: string
+        actionItems?: string
+        other?: string
+      }
+      error?: { message: string; code: string }
+    }
+
+    if (!data.success || !data.sections) {
+      throw new Error(data.error?.message || 'Transcript summarization failed')
+    }
+
+    return data.sections
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Transcript summarization request timeout')
+    }
+
+    throw error
+  }
+}
+
+/**
  * Parse API error response
  * @param error - Error object
  * @returns Formatted API error

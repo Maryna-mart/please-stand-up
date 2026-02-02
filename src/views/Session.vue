@@ -97,7 +97,11 @@ import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
 import { usePusher } from '../composables/usePusher'
-import { finishSession as finishSessionAPI, parseAPIError } from '../lib/ai-api'
+import {
+  finishSession as finishSessionAPI,
+  summarizeTranscript,
+  parseAPIError,
+} from '../lib/ai-api'
 import { parseSummary } from '../lib/summary-parser'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
@@ -190,11 +194,29 @@ const onTalkEnded = () => {
   // Talk ended event handler
 }
 
-const onTranscriptReady = (transcriptText: string) => {
-  transcripts.value.push({
-    participantName: userName.value || 'Anonymous',
-    text: transcriptText,
-  })
+const onTranscriptReady = async (transcriptText: string) => {
+  try {
+    // Immediately summarize the transcript to show structured sections
+    const sections = await summarizeTranscript(
+      userName.value || 'Anonymous',
+      transcriptText
+    )
+
+    // Format the sections as structured text for display
+    const formattedText = formatSummaryAsText(sections)
+
+    // Add the summarized transcript to the list
+    transcripts.value.push({
+      participantName: userName.value || 'Anonymous',
+      text: formattedText,
+    })
+  } catch {
+    // If summarization fails, fall back to raw text
+    transcripts.value.push({
+      participantName: userName.value || 'Anonymous',
+      text: transcriptText,
+    })
+  }
 }
 
 const copySessionLink = () => {

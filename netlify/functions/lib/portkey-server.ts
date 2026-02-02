@@ -171,6 +171,98 @@ Format the summary as a structured document with each person as a section. Inclu
 }
 
 /**
+ * Summarize a single participant's transcript into structured sections
+ * Called immediately after transcription for real-time display
+ * @param participantName - Name of the participant
+ * @param transcriptText - Raw transcript text from a single participant
+ * @returns Structured sections object
+ */
+export async function summarizeIndividualTranscript(
+  participantName: string,
+  transcriptText: string
+): Promise<{
+  yesterday?: string
+  today?: string
+  blockers?: string
+  actionItems?: string
+  other?: string
+}> {
+  if (!transcriptText || transcriptText.trim().length === 0) {
+    throw new Error('Transcript text is required for summarization')
+  }
+
+  const portkey = initializePortkey()
+
+  return withRetry(async () => {
+    console.log('[Portkey] Starting individual transcript summarization', {
+      participantName,
+      textLength: transcriptText.length,
+    })
+
+    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content):
+
+{
+  "yesterday": "What they completed yesterday",
+  "today": "What they plan to do today",
+  "blockers": "Any blockers or challenges",
+  "actionItems": "Any actions needed from the team",
+  "other": "Any other important information"
+}
+
+Be concise and extract only the most important points. Return ONLY valid JSON, no additional text.`
+
+    const response = await portkey.chat.completions.create(
+      {
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Here is ${participantName}'s standup update:\n\n${transcriptText}\n\nExtract the key sections as JSON.`,
+          },
+        ],
+      },
+      {
+        timeout: REQUEST_TIMEOUT_MS,
+      }
+    )
+
+    const responseText = response.choices?.[0]?.message?.content || ''
+
+    if (!responseText || responseText.trim().length === 0) {
+      throw new Error('No summary content received from Claude')
+    }
+
+    // Parse the JSON response
+    let sections: {
+      yesterday?: string
+      today?: string
+      blockers?: string
+      actionItems?: string
+      other?: string
+    }
+    try {
+      sections = JSON.parse(responseText)
+    } catch {
+      console.warn(
+        '[Portkey] Failed to parse JSON response, falling back to empty sections'
+      )
+      sections = {}
+    }
+
+    console.log('[Portkey] Individual transcript summarization successful', {
+      participantName,
+      sectionsCount: Object.keys(sections).filter(
+        k => sections[k as keyof typeof sections]
+      ).length,
+    })
+
+    return sections
+  })
+}
+
+/**
  * Summarize transcripts into structured sections
  * @param transcriptText - Formatted transcript text (already formatted with participant names)
  * @returns Summary text ready for parsing
