@@ -9,7 +9,7 @@ import { getSession, updateSession } from './lib/redis-client'
 import { isValidSessionId } from './lib/validation'
 import { summarizeTranscripts } from './lib/portkey-server'
 import { sendSummaryEmails, isSendGridConfigured } from './lib/sendgrid-client'
-import { parseSummary } from '../src/lib/summary-parser'
+import { parseSummary } from '../../src/lib/summary-parser'
 import { decryptEmail, deserializeEncryptedEmail } from './lib/email-crypto'
 
 interface FinishSessionRequest {
