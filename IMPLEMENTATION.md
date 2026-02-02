@@ -68,10 +68,10 @@
   - If successful, move to Phase 7 (Email Delivery)
 
 ### Current Session: Phase 7 Email Infrastructure (IN PROGRESS)
-- ✅ **DONE**: Frontend email capture
+- ✅ **DONE**: Frontend email capture (Commits: 9ea9cc3)
   - CreateSessionCard with email field (required)
   - JoinSessionCard with email field (required)
-- ✅ **DONE**: Email validation & encryption
+- ✅ **DONE**: Email validation & encryption (Commit: 9ea9cc3)
   - validateEmail(), validateEmailList() in sanitize.ts
   - AES-256-GCM email encryption with PBKDF2 (email-crypto.ts)
   - Comprehensive tests (90+ test cases)
@@ -83,12 +83,94 @@
   - create-session.ts: Accepts, validates, encrypts email
   - join-session.ts: Accepts, validates, encrypts email per participant
   - Email encrypted with AES-256-GCM using session ID as secret
-- ✅ **DONE**: Session.vue UI Update (Commit: TBD)
+- ✅ **DONE**: Session.vue UI Redesign (Commit: 21cbffb)
   - Renamed "Generate Summary" → "Standup is Finished" (green button)
-  - Removed SummaryView UI component
-  - Added completion message display
+  - Removed SummaryView UI component and display
+  - Added completion message: "✓ Standup completed! Summary email sent."
   - Added error handling for session finish
-- ⏳ **NEXT STEPS**: Email delivery infrastructure
+  - Placeholder: finishSession() → TODO: wire to finish-session API
+
+### COMPLETED: TalkSession.vue UX Simplification ✅
+- ✅ **DONE**: State machine-based recording flow (Commit: b56ea20)
+  - Auto-transcribe on Stop button (no separate Transcribe button)
+  - Single action button at a time (Talk → Stop → Transcribing → Re-record)
+  - Removed unused `<audio>` element
+  - Removed Reset button
+  - Clean status message showing: Recording → Transcribing → Done states
+- ✅ **DONE**: Error handling improvements (Commit: 50af277)
+  - Dismissible error alerts with close button (✕)
+  - User-friendly error message: "Oops, something went wrong. Please try again."
+  - Improved error parsing to prevent [object Object] display
+- ✅ **DONE**: Immediate transcribing feedback (Commit: 3b16edf)
+  - Show "Transcribing..." button immediately after Stop
+  - No blank button period during MediaRecorder processing
+- ✅ **DONE**: Structured transcript display (Commit: 85812b6)
+  - Display parsed standup sections in TranscriptView
+  - Shows: ✅ Yesterday, 🎯 Today, 🚫 Blockers, 📌 Team Action Items, 📝 Other
+  - Fallback to raw text if sections not parsed
+  - Matches email summary format exactly
+
+## Deepgram Language Support
+**Service**: Deepgram Nova-2 STT
+**API**: https://api.deepgram.com/v1/listen
+**Auto-detect**: Enabled by default (detects language automatically)
+**Manual language override**: Supported via `language` parameter
+
+### Supported Languages (Deepgram Nova-2)
+**European**:
+- 🇩🇪 German (de)
+- 🇬🇧 English - British (en-GB)
+- 🇺🇸 English - US (en-US)
+- 🇪🇸 Spanish (es)
+- 🇫🇷 French (fr)
+- 🇮🇹 Italian (it)
+- 🇵🇱 Polish (pl)
+- 🇵🇹 Portuguese (pt)
+- 🇷🇺 Russian (ru)
+- 🇸🇪 Swedish (sv)
+- 🇳🇱 Dutch (nl)
+- 🇺🇦 Ukrainian (uk)
+
+**Asian**:
+- 🇮🇳 Hindi (hi)
+- 🇮🇩 Indonesian (id)
+- 🇯🇵 Japanese (ja)
+- 🇰🇷 Korean (ko)
+- 🇨🇳 Mandarin Chinese (zh-CN)
+- 🇹🇼 Traditional Chinese (zh-TW)
+- 🇹🇭 Thai (th)
+- 🇵🇭 Filipino/Tagalog (tl)
+- 🇻🇳 Vietnamese (vi)
+- 🇲🇾 Malay (ms)
+
+**Other**:
+- 🇸🇦 Arabic (ar)
+- 🇮🇱 Hebrew (he)
+- 🇬🇷 Greek (el)
+- 🇹🇷 Turkish (tr)
+
+**Features**:
+- Smart formatting enabled (punctuation, capitalization)
+- Model: nova-2 (latest, most accurate)
+- Automatic language detection
+- Supports: webm, mp3, mp4, wav audio formats
+- Max file size: 25MB
+- Latency: 1-3 seconds (industry-leading)
+
+**Environment Configuration**:
+```bash
+# Get from: https://console.deepgram.com/settings/api-keys
+DEEPGRAM_API_KEY=your_api_key_here
+```
+
+**Current Implementation** (`netlify/functions/transcribe.ts`):
+- Accepts optional `language` parameter in request
+- Falls back to auto-detect if not specified
+- Returns detected language in response
+- Error handling for timeouts, rate limits, auth failures
+- Retry logic with exponential backoff (max 3 retries)
+
+- ⏳ **THEN**: Email delivery infrastructure
   - Create SendGrid client (sendgrid-client.ts)
   - Create finish-session endpoint
   - Connect finish-session API in ai-api.ts
