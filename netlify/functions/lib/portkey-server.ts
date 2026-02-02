@@ -5,9 +5,6 @@
  */
 
 import OpenAI from 'openai'
-import fetch from 'node-fetch'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import FormData from 'form-data'
 
 // Configuration constants
 const MAX_RETRIES = 3
@@ -101,7 +98,7 @@ async function withRetry<T>(
 }
 
 /**
- * Transcribe audio to text using Whisper
+ * Transcribe audio to text using GPT multimodal
  * @param audioBuffer - Audio file buffer
  * @param audioFormat - Audio format (webm, mp3, mp4, wav)
  * @param language - Optional language code (e.g., 'en', 'de')
@@ -121,88 +118,75 @@ export async function transcribeAudio(
   }
 
   return withRetry(async () => {
+    const client = initializePortkey()
+
     console.log('[Portkey] Starting transcription for audio', {
       size: audioBuffer.length,
       format: audioFormat,
       language: language || 'auto-detect',
     })
 
-    console.log('[Portkey] Creating request with:', {
-      fileSize: audioBuffer.length,
-      audioFormat,
-      model: 'whisper-1',
-      hasLanguage: !!(language && language !== 'auto-detect'),
-      hasPrompt: true,
-    })
-
-    // Make raw fetch request to capture the actual 50-byte error body
     try {
-      console.log('[Portkey] Making raw fetch to Portkey API')
+      // Convert audio buffer to base64
+      const audioBase64 = audioBuffer.toString('base64')
 
-      // Build FormData for the request
-      const form = new FormData()
-      form.append('file', audioBuffer, {
-        filename: `audio.${audioFormat}`,
-        contentType: `audio/${audioFormat}`,
-      })
-      form.append('model', 'whisper-1')
-      if (language && language !== 'auto-detect') {
-        form.append('language', language)
-      }
-      form.append('prompt', 'This is a team standup meeting transcript.')
-
-      const formHeaders = form.getHeaders()
-      console.log('[Portkey] FormData headers before request:', {
-        'content-type': formHeaders['content-type'],
-        hasAuthorization: !!process.env.PORTKEY_API_KEY,
+      console.log('[Portkey] Audio converted to base64', {
+        base64Length: audioBase64.length,
+        audioFormat,
       })
 
-      // Try using x-api-key header instead of Bearer token
-      const response = await fetch(
-        'https://api.portkey.ai/v1/audio/transcriptions',
+      // Create message with audio and transcription prompt
+      const languageHint = language && language !== 'auto-detect' ? ` (Language: ${language})` : ''
+      const prompt = `Transcribe the following audio to text${languageHint}. Return ONLY the transcribed text, nothing else.`
+
+      // Send to GPT model with audio as base64 content using vision API
+      const response = await client.chat.completions.create(
         {
-          method: 'POST',
-          headers: {
-            'x-api-key': process.env.PORTKEY_API_KEY || '',
-            ...formHeaders,
-          },
-          body: form,
+          model: 'gpt-5-2', // Using GPT 5.2 for multimodal audio support
+          max_tokens: 2048,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: prompt,
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:audio/${audioFormat};base64,${audioBase64}`,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          timeout: REQUEST_TIMEOUT_MS,
         }
       )
 
-      const responseBody = await response.text()
-
-      console.log('[Portkey] Raw response status:', response.status)
-      console.log('[Portkey] Raw response body:', responseBody)
-      console.log('[Portkey] Raw response headers:', {
-        'content-type': response.headers.get('content-type'),
-        'content-length': response.headers.get('content-length'),
-        'x-portkey-gateway-exception': response.headers.get(
-          'x-portkey-gateway-exception'
-        ),
-      })
-
-      if (!response.ok) {
-        console.error('[Portkey] API returned error:', {
-          status: response.status,
-          body: responseBody,
-        })
-        throw new Error(`Portkey API error ${response.status}: ${responseBody}`)
+      // Extract text from GPT response
+      let transcriptionText = ''
+      if (response.choices && response.choices.length > 0) {
+        const content = response.choices[0].message.content
+        if (typeof content === 'string') {
+          transcriptionText = content
+        }
       }
 
-      const transcription = JSON.parse(responseBody)
-
-      if (!transcription.text) {
-        throw new Error('No transcription text in response')
+      if (!transcriptionText || transcriptionText.trim().length === 0) {
+        throw new Error('No transcription text in GPT response')
       }
 
       console.log('[Portkey] Transcription successful', {
-        textLength: transcription.text.length,
+        textLength: transcriptionText.length,
         language: language || 'detected',
       })
 
       return {
-        text: transcription.text,
+        text: transcriptionText.trim(),
         language: language || 'en',
       }
     } catch (error) {
@@ -211,7 +195,7 @@ export async function transcribeAudio(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         message: (error as any).message,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stack: (error as any).stack,
+        status: (error as any).status,
       })
       throw error
     }
