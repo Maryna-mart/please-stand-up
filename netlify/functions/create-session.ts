@@ -17,13 +17,16 @@ import {
   getClientIp,
   sanitizeInput,
   isNonEmptyString,
+  isValidEmail,
 } from './lib/validation'
 import { setSession } from './lib/redis-client'
 import { hashPasswordServer } from './lib/password-utils-server'
+import { encryptEmail, serializeEncryptedEmail } from './lib/email-crypto'
 
 interface CreateSessionRequest {
   leaderName: string
   password?: string
+  email?: string
 }
 
 interface CreateSessionResponse {
@@ -134,6 +137,11 @@ const handler: Handler = async event => {
       }
     }
 
+    // Generate session and user IDs early (needed for email encryption)
+    const sessionId = generateSessionId()
+    const userId = generateUserId()
+    const createdAt = Date.now()
+
     // Validate password if provided
     let passwordHash: string | undefined
     if (body.password) {
@@ -172,16 +180,51 @@ const handler: Handler = async event => {
       }
     }
 
-    // Generate session and user IDs
-    const sessionId = generateSessionId()
-    const userId = generateUserId()
-    const createdAt = Date.now()
+    // Validate and encrypt email if provided
+    let encryptedEmail: string | undefined
+    if (body.email) {
+      if (!isNonEmptyString(body.email)) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            error: 'Email must not be empty',
+            code: 'EMPTY_EMAIL',
+          } as ErrorResponse),
+        }
+      }
+
+      if (!isValidEmail(body.email)) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            error: 'Invalid email address format',
+            code: 'INVALID_EMAIL',
+          } as ErrorResponse),
+        }
+      }
+
+      // Encrypt email using session ID as secret
+      try {
+        const encrypted = encryptEmail(body.email, sessionId)
+        encryptedEmail = serializeEncryptedEmail(encrypted)
+      } catch (error) {
+        console.error('[create-session] Email encryption failed:', error)
+        return {
+          statusCode: 500,
+          body: JSON.stringify({
+            error: 'Failed to process email',
+            code: 'EMAIL_ENCRYPTION_ERROR',
+          } as ErrorResponse),
+        }
+      }
+    }
 
     // Store session in Redis
     const sessionData = {
       id: sessionId,
       leaderName: sanitizeInput(leaderName),
       passwordHash,
+      encryptedEmail,
       participants: [
         {
           id: userId,

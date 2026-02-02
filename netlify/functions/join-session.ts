@@ -17,9 +17,11 @@ import {
   getClientIp,
   sanitizeInput,
   isNonEmptyString,
+  isValidEmail,
 } from './lib/validation'
 import { getSession, updateSession } from './lib/redis-client'
 import { verifyPasswordServer } from './lib/password-utils-server'
+import { encryptEmail, serializeEncryptedEmail } from './lib/email-crypto'
 
 const MAX_PARTICIPANTS = 20
 
@@ -27,6 +29,7 @@ interface JoinSessionRequest {
   sessionId: string
   participantName: string
   password?: string
+  email?: string
 }
 
 interface JoinSessionResponse {
@@ -223,6 +226,45 @@ const handler: Handler = async event => {
       }
     }
 
+    // Validate and encrypt email if provided
+    let encryptedEmail: string | undefined
+    if (body.email) {
+      if (!isNonEmptyString(body.email)) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            error: 'Email must not be empty',
+            code: 'EMPTY_EMAIL',
+          } as ErrorResponse),
+        }
+      }
+
+      if (!isValidEmail(body.email)) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            error: 'Invalid email address format',
+            code: 'INVALID_EMAIL',
+          } as ErrorResponse),
+        }
+      }
+
+      // Encrypt email using session ID as secret
+      try {
+        const encrypted = encryptEmail(body.email, sessionId)
+        encryptedEmail = serializeEncryptedEmail(encrypted)
+      } catch (error) {
+        console.error('[join-session] Email encryption failed:', error)
+        return {
+          statusCode: 500,
+          body: JSON.stringify({
+            error: 'Failed to process email',
+            code: 'EMAIL_ENCRYPTION_ERROR',
+          } as ErrorResponse),
+        }
+      }
+    }
+
     // Generate user ID
     const userId = generateUserId()
 
@@ -232,6 +274,7 @@ const handler: Handler = async event => {
       {
         id: userId,
         name: sanitizeInput(participantName),
+        encryptedEmail,
       },
     ]
 
