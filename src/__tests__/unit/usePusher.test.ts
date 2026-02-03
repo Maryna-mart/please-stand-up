@@ -123,6 +123,17 @@ describe('usePusher composable', () => {
     expect(subscribeToSession).toBeDefined()
   })
 
+  it('should handle transcript added event', () => {
+    const { subscribeToSession } = usePusher()
+    const onTranscriptAdded = vi.fn()
+
+    subscribeToSession('test-session', {
+      onTranscriptAdded,
+    })
+
+    expect(subscribeToSession).toBeDefined()
+  })
+
   it('should unsubscribe from session', () => {
     const { subscribeToSession, unsubscribeFromSession, channel } = usePusher()
 
@@ -142,6 +153,7 @@ describe('usePusher composable', () => {
       onTimerStarted: vi.fn(),
       onTimerStopped: vi.fn(),
       onStatusChanged: vi.fn(),
+      onTranscriptAdded: vi.fn(),
     }
 
     subscribeToSession('test-session', callbacks)
@@ -151,6 +163,7 @@ describe('usePusher composable', () => {
     expect(callbacks.onTimerStarted).not.toHaveBeenCalled()
     expect(callbacks.onTimerStopped).not.toHaveBeenCalled()
     expect(callbacks.onStatusChanged).not.toHaveBeenCalled()
+    expect(callbacks.onTranscriptAdded).not.toHaveBeenCalled()
   })
 
   it('should create correct channel name with session ID', () => {
