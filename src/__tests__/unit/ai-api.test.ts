@@ -1,10 +1,395 @@
 /**
  * Unit tests for ai-api client
- * Tests error handling and API integration
+ * Tests API functions, error handling, and retry logic
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getErrorMessage, parseAPIError } from '@/lib/ai-api'
+import {
+  getErrorMessage,
+  parseAPIError,
+  getSessionTranscripts,
+  uploadAudio,
+  generateSummary,
+  finishSession,
+  summarizeTranscript,
+  saveTranscript,
+} from '@/lib/ai-api'
+import type { Transcript } from '@/lib/portkey-types'
+
+// Mock global fetch - properly typed as a Vitest mock function
+type MockedFetch = ReturnType<typeof vi.fn>
+const mockFetch: MockedFetch = vi.fn()
+global.fetch = mockFetch as unknown as typeof fetch
+
+describe('ai-api: getSessionTranscripts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should fetch and return transcripts from session', async () => {
+    const sessionId = 'test-session-id'
+    const mockTranscripts: Transcript[] = [
+      {
+        participantName: 'Alice',
+        text: '✅ Yesterday: Worked on login\n🎯 Today: Working on checkout',
+        language: 'en',
+        duration: 60,
+      },
+      {
+        participantName: 'Bob',
+        text: '✅ Yesterday: Fixed bugs\n🎯 Today: Code review',
+        language: 'en',
+        duration: 45,
+      },
+    ]
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ transcripts: mockTranscripts }),
+    })
+
+    const result = await getSessionTranscripts(sessionId)
+
+    expect(result).toEqual(mockTranscripts)
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/.netlify/functions/get-session/test-session-id'
+    )
+  })
+
+  it('should encode special characters in sessionId', async () => {
+    const sessionId = 'test/session?id=123'
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ transcripts: [] }),
+    })
+
+    await getSessionTranscripts(sessionId)
+
+    const callUrl = mockFetch.mock.calls[0][0]
+    // Should be properly URL-encoded
+    expect(callUrl).toContain('test%2Fsession%3Fid%3D123')
+    expect(callUrl).toContain('get-session')
+  })
+
+  it('should return empty array on 404 error', async () => {
+    const sessionId = 'nonexistent'
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Not found' }),
+    })
+
+    const result = await getSessionTranscripts(sessionId)
+
+    expect(result).toEqual([])
+  })
+
+  it('should return empty array on network error', async () => {
+    const sessionId = 'test-session'
+    mockFetch.mockRejectedValueOnce(new Error('Network error'))
+
+    const result = await getSessionTranscripts(sessionId)
+
+    expect(result).toEqual([])
+  })
+
+  it('should throw on missing sessionId', async () => {
+    await expect(getSessionTranscripts('')).rejects.toThrow(
+      'Session ID is required'
+    )
+  })
+
+  it('should handle response without transcripts field', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'test', leaderName: 'Alice' }),
+    })
+
+    const result = await getSessionTranscripts('test-id')
+
+    expect(result).toEqual([])
+  })
+})
+
+describe('ai-api: uploadAudio', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should upload audio and return transcript', async () => {
+    const audioBlob = new Blob(['audio data'], { type: 'audio/webm' })
+    const mockTranscript = {
+      text: 'Yesterday I finished the login page',
+      language: 'en' as const,
+    }
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        transcript: mockTranscript,
+      }),
+    })
+
+    const result = await uploadAudio(
+      'session-id',
+      'participant-id',
+      'Alice',
+      audioBlob,
+      'webm',
+      'en'
+    )
+
+    expect(result).toEqual(mockTranscript)
+  })
+
+  it('should validate inputs', async () => {
+    const emptyBlob = new Blob([], { type: 'audio/webm' })
+
+    await expect(
+      uploadAudio('session-id', 'participant-id', 'Alice', emptyBlob, 'webm')
+    ).rejects.toThrow('Audio blob is empty')
+  })
+
+  it('should reject files larger than 25MB', async () => {
+    const largeBlob = new Blob([new ArrayBuffer(26 * 1024 * 1024)], {
+      type: 'audio/webm',
+    })
+
+    await expect(
+      uploadAudio('session-id', 'participant-id', 'Alice', largeBlob, 'webm')
+    ).rejects.toThrow('exceeds 25MB limit')
+  })
+
+  it('should retry on transient errors', async () => {
+    const audioBlob = new Blob(['audio'], { type: 'audio/webm' })
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Server error' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          transcript: { text: 'Success', language: 'en' },
+        }),
+      })
+
+    const result = await uploadAudio(
+      'session-id',
+      'participant-id',
+      'Alice',
+      audioBlob,
+      'webm'
+    )
+
+    expect(result.text).toBe('Success')
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('ai-api: generateSummary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should generate summary from transcripts', async () => {
+    const transcripts: Transcript[] = [
+      {
+        participantName: 'Alice',
+        text: 'Yesterday: Login page, Today: Checkout',
+        language: 'en',
+      },
+    ]
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        summary: {
+          text: 'Session summary here',
+          language: 'en',
+        },
+      }),
+    })
+
+    const result = await generateSummary('session-id', transcripts)
+
+    expect(result.text).toBe('Session summary here')
+    expect(result.language).toBe('en')
+  })
+
+  it('should validate inputs', async () => {
+    await expect(generateSummary('', [])).rejects.toThrow(
+      'Session ID is required'
+    )
+
+    await expect(generateSummary('session-id', [])).rejects.toThrow(
+      'At least one transcript is required'
+    )
+  })
+
+  it('should require participantName and text in transcripts', async () => {
+    const invalidTranscripts: Array<Record<string, unknown>> = [
+      { participantName: 'Alice' }, // missing text
+    ]
+
+    await expect(
+      generateSummary('session-id', invalidTranscripts as unknown as Transcript[])
+    ).rejects.toThrow('participant name and text')
+  })
+})
+
+describe('ai-api: finishSession', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should finish session and return summary', async () => {
+    const transcripts: Transcript[] = [
+      {
+        participantName: 'Alice',
+        text: 'Standup summary',
+        language: 'en',
+      },
+    ]
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        rawText: 'Full session summary text',
+      }),
+    })
+
+    const result = await finishSession('session-id', transcripts)
+
+    expect(result).toBe('Full session summary text')
+  })
+
+  it('should validate inputs', async () => {
+    await expect(finishSession('', [])).rejects.toThrow(
+      'Session ID is required'
+    )
+  })
+})
+
+describe('ai-api: summarizeTranscript', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should summarize single transcript', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        sections: {
+          yesterday: 'Worked on login',
+          today: 'Working on checkout',
+          blockers: 'Waiting for API',
+          actionItems: 'Review code',
+          other: 'Attending meetup',
+        },
+      }),
+    })
+
+    const result = await summarizeTranscript(
+      'Alice',
+      'Full transcript text',
+      'en'
+    )
+
+    expect(result.yesterday).toBe('Worked on login')
+    expect(result.today).toBe('Working on checkout')
+    expect(result.blockers).toBe('Waiting for API')
+  })
+
+  it('should validate required fields', async () => {
+    await expect(summarizeTranscript('', 'text')).rejects.toThrow(
+      'Participant name and transcript text are required'
+    )
+
+    await expect(summarizeTranscript('Alice', '')).rejects.toThrow(
+      'Participant name and transcript text are required'
+    )
+  })
+
+  it('should retry on server errors', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Service unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          sections: { yesterday: 'Success' },
+        }),
+      })
+
+    const result = await summarizeTranscript('Alice', 'transcript')
+
+    expect(result.yesterday).toBe('Success')
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('ai-api: saveTranscript', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should save transcript to session', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    })
+
+    await saveTranscript('session-id', {
+      participantName: 'Alice',
+      text: 'Transcript text',
+      duration: 60,
+      language: 'en',
+    })
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/.netlify/functions/save-transcript',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+  })
+
+  it('should validate inputs', async () => {
+    await expect(
+      saveTranscript('', { participantName: 'Alice', text: 'text' })
+    ).rejects.toThrow('Session ID and transcript are required')
+
+    await expect(
+      saveTranscript('session-id', { participantName: 'Alice' } as unknown as Parameters<typeof saveTranscript>[1])
+    ).rejects.toThrow('participantName and text')
+  })
+
+  it('should handle failed save response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: false, error: 'Bad request' }),
+    })
+
+    await expect(
+      saveTranscript('session-id', {
+        participantName: 'Alice',
+        text: 'text',
+      })
+    ).rejects.toThrow('Failed to save transcript')
+  })
+})
 
 describe('ai-api: Error Handling', () => {
   beforeEach(() => {

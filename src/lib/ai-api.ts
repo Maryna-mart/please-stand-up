@@ -490,7 +490,7 @@ export async function getSessionTranscripts(
 
   try {
     const response = await fetch(
-      `/.netlify/functions/get-session?sessionId=${sessionId}`
+      `/.netlify/functions/get-session/${encodeURIComponent(sessionId)}`
     )
 
     if (!response.ok) {
@@ -498,13 +498,10 @@ export async function getSessionTranscripts(
     }
 
     const data = (await response.json()) as {
-      success?: boolean
-      session?: {
-        transcripts?: Transcript[]
-      }
+      transcripts?: Transcript[]
     }
 
-    return data.session?.transcripts || []
+    return data.transcripts || []
   } catch (error) {
     console.error('[ai-api] getSessionTranscripts failed:', error)
     return [] // Return empty array on error
