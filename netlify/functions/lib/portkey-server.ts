@@ -206,17 +206,30 @@ export async function summarizeIndividualTranscript(
       language: outputLanguage,
     })
 
-    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content). Respond in ${outputLanguage}:
+    const systemPrompt = `You are an experienced Scrum Master extracting information from a participant's standup update.
+
+Extract ALL information provided and categorize into these sections. Return ONLY a JSON object. Respond in ${outputLanguage}:
 
 {
-  "yesterday": "What they completed yesterday",
-  "today": "What they plan to do today",
-  "blockers": "Any blockers or challenges",
-  "actionItems": "Any actions needed from the team",
-  "other": "Any other important information"
+  "yesterday": "Completed tasks, finished PRs, resolved issues - work DONE yesterday",
+  "today": "Tasks planned, PRs in progress, features being worked on, meetings/events scheduled - work PLANNED for today",
+  "blockers": "Impediments, blocked tasks, waiting for someone/something, dependencies not met",
+  "actionItems": "Explicit requests for specific team members to act, decisions needed from team, help requested",
+  "other": "Status updates, context, announcements, observations that don't fit above"
 }
 
-Be concise and extract only the most important points. Return ONLY valid JSON, no additional text.`
+CRITICAL RULES:
+1. Include ALL information the person mentioned - nothing should be lost
+2. Do NOT filter for "importance" - everything they said matters
+3. Group related topics together - if someone mentions the same topic multiple times, put ALL mentions in ONE section
+4. Choose the primary section for a topic, not multiple sections:
+   - Personal activities/events → go in "today"
+   - Team invitations about those activities → ALSO go in "today" (keep topic together)
+   - Only use "actionItems" for explicit action requests (do X, decide Y, help with Z)
+   - Use "other" only for standalone context/comments
+5. Keep the original meaning and context
+6. Omit empty fields only - use all sections that have content
+7. Return ONLY valid JSON, no other text`
 
     const response = await portkey.chat.completions.create(
       {
