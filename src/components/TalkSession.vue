@@ -102,7 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { uploadAudio as uploadAudioAPI, parseAPIError } from '../lib/ai-api'
+import { uploadAudio as uploadAudioAPI, getErrorMessage } from '../lib/ai-api'
 
 interface Props {
   duration?: number
@@ -208,7 +208,7 @@ const initializeMicrophone = async () => {
     } else if (err.name === 'NotFoundError') {
       microphoneError.value = 'No microphone found. Please check your device.'
     } else {
-      microphoneError.value = 'Failed to access microphone: ' + err.message
+      microphoneError.value = getErrorMessage(err)
     }
   }
 }
@@ -308,13 +308,8 @@ const uploadAudioToAPI = async () => {
     hasTranscript.value = true
     emit('transcript-ready', { text: result.text, language: result.language })
   } catch (error) {
-    const apiError = parseAPIError(error)
-    // Ensure we always have a readable error message
-    const errorMessage =
-      typeof apiError.message === 'string' && apiError.message.trim().length > 0
-        ? apiError.message
-        : 'Oops, something went wrong. Please try again.'
-    transcriptionError.value = errorMessage
+    // For API errors, show generic message since retries will happen
+    transcriptionError.value = getErrorMessage(error, true)
   } finally {
     isTranscribing.value = false
   }

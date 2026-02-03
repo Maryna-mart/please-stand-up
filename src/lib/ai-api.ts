@@ -36,7 +36,8 @@ function isRetryableError(error: unknown, statusCode?: number): boolean {
   if (error instanceof Error) {
     if (error.name === 'AbortError') return true // timeout
     if (error.message.includes('timeout')) return true
-    if (error.message.includes('fetch') || error.message.includes('network')) return true
+    if (error.message.includes('fetch') || error.message.includes('network'))
+      return true
   }
 
   // HTTP status code logic
@@ -401,7 +402,9 @@ export async function summarizeTranscript(
       }
 
       if (!data.success || !data.sections) {
-        throw new Error(data.error?.message || 'Transcript summarization failed')
+        throw new Error(
+          data.error?.message || 'Transcript summarization failed'
+        )
       }
 
       return data.sections
@@ -509,6 +512,64 @@ export async function getSessionTranscripts(
 }
 
 /**
+ * Convert any error to a human-readable message string
+ * Used in UI to ensure we never display "[object Object]"
+ * For API errors, returns generic message since retries will happen
+ * For specific errors (microphone, etc.), returns detailed message
+ * @param error - Error of any type
+ * @param isAPIError - If true, return generic message for retry scenarios
+ * @returns Human-readable error message
+ */
+export function getErrorMessage(error: unknown, isAPIError = false): string {
+  if (!error) return 'Oops, something went wrong. Please try again.'
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  if (error instanceof Error) {
+    // Specific, non-API errors always get detailed messages
+    if (error.message.includes('permission')) {
+      return 'Microphone permission denied. Please enable it in your browser settings.'
+    }
+    if (
+      error.message.includes('NotFoundError') ||
+      error.message.includes('No microphone')
+    ) {
+      return 'No microphone found. Please check your device.'
+    }
+
+    // For API errors, use generic message since retries will happen
+    if (isAPIError) {
+      return 'Oops, something went wrong. Please try again.'
+    }
+
+    // For non-API errors, return the actual message
+    if (error.message && error.message.trim().length > 0) {
+      return error.message
+    }
+  }
+
+  if (typeof error === 'object') {
+    const errorObj = error as Record<string, unknown>
+    if (errorObj.message && typeof errorObj.message === 'string') {
+      if (isAPIError) {
+        return 'Oops, something went wrong. Please try again.'
+      }
+      return errorObj.message
+    }
+    if (errorObj.error && typeof errorObj.error === 'string') {
+      if (isAPIError) {
+        return 'Oops, something went wrong. Please try again.'
+      }
+      return errorObj.error
+    }
+  }
+
+  return 'Oops, something went wrong. Please try again.'
+}
+
+/**
  * Parse API error response
  * @param error - Error object
  * @returns Formatted API error
@@ -533,9 +594,10 @@ export function parseAPIError(error: unknown): APIError {
     }
 
     // Return error message, ensuring it's a string
-    const message = error.message && error.message.trim().length > 0
-      ? error.message
-      : 'An unexpected error occurred'
+    const message =
+      error.message && error.message.trim().length > 0
+        ? error.message
+        : 'An unexpected error occurred'
 
     return {
       message,
