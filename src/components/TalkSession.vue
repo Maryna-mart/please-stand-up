@@ -118,7 +118,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'transcript-ready': [transcript: string]
+  'transcript-ready': [data: { text: string; language: string }]
   'talk-started': []
   'talk-stopped': []
   'talk-ended': []
@@ -306,7 +306,7 @@ const uploadAudioToAPI = async () => {
     )
 
     hasTranscript.value = true
-    emit('transcript-ready', result.text)
+    emit('transcript-ready', { text: result.text, language: result.language })
   } catch (error) {
     const apiError = parseAPIError(error)
     // Ensure we always have a readable error message

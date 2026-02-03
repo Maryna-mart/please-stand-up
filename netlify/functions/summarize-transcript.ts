@@ -11,6 +11,7 @@ import { summarizeIndividualTranscript } from './lib/portkey-server'
 interface SummarizeTranscriptRequest {
   participantName: string
   transcriptText: string
+  language?: string
 }
 
 interface SummarizeTranscriptResponse {
@@ -90,7 +91,8 @@ const handler: Handler = async event => {
     try {
       sections = await summarizeIndividualTranscript(
         body.participantName,
-        body.transcriptText
+        body.transcriptText,
+        body.language
       )
     } catch (error) {
       console.error('[summarize-transcript] Summarization failed:', error)

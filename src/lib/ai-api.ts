@@ -268,11 +268,13 @@ export async function finishSession(
  * Summarize a single participant's transcript immediately after transcription
  * @param participantName - Name of the participant
  * @param transcriptText - Raw transcript text to summarize
+ * @param language - Detected language code for output
  * @returns Structured summary sections for immediate display
  */
 export async function summarizeTranscript(
   participantName: string,
-  transcriptText: string
+  transcriptText: string,
+  language?: LanguageCode
 ): Promise<{
   yesterday?: string
   today?: string
@@ -296,6 +298,7 @@ export async function summarizeTranscript(
       body: JSON.stringify({
         participantName,
         transcriptText,
+        language,
       }),
       signal: controller.signal,
     })

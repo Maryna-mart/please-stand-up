@@ -196,14 +196,15 @@ const onTalkEnded = () => {
   // Talk ended event handler
 }
 
-const onTranscriptReady = async (transcriptText: string) => {
+const onTranscriptReady = async (data: { text: string; language: string }) => {
   isSummarizingInProgress.value = true
 
   try {
     // Immediately summarize the transcript to show structured sections
     const sections = await summarizeTranscript(
       userName.value || 'Anonymous',
-      transcriptText
+      data.text,
+      data.language as any
     )
 
     // Format the sections as structured text for display
@@ -218,7 +219,7 @@ const onTranscriptReady = async (transcriptText: string) => {
     // If summarization fails, fall back to raw text
     transcripts.value.push({
       participantName: userName.value || 'Anonymous',
-      text: transcriptText,
+      text: data.text,
     })
   } finally {
     isSummarizingInProgress.value = false
@@ -288,22 +289,22 @@ const formatSummaryAsText = (sections: {
   const parts: string[] = []
 
   if (sections.yesterday) {
-    parts.push(`✅ Yesterday: ${sections.yesterday}`)
+    parts.push(`\n✅ Yesterday: ${sections.yesterday}`)
   }
   if (sections.today) {
-    parts.push(`🎯 Today: ${sections.today}`)
+    parts.push(`\n🎯 Today: ${sections.today}`)
   }
   if (sections.blockers) {
-    parts.push(`🚫 Blockers: ${sections.blockers}`)
+    parts.push(`\n🚫 Blockers: ${sections.blockers}`)
   }
   if (sections.actionItems) {
-    parts.push(`📌 Team Action Items: ${sections.actionItems}`)
+    parts.push(`\n📌 Team Action Items: ${sections.actionItems}`)
   }
   if (sections.other) {
-    parts.push(`📝 Other: ${sections.other}`)
+    parts.push(`\n📝 Other: ${sections.other}`)
   }
 
-  return parts.join('\n\n')
+  return parts.join('\n')
 }
 
 const leaveSession = async () => {

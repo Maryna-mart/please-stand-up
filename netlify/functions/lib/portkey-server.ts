@@ -178,11 +178,13 @@ Format the summary as a structured document with each person as a section. Inclu
  * Called immediately after transcription for real-time display
  * @param participantName - Name of the participant
  * @param transcriptText - Raw transcript text from a single participant
+ * @param language - Language code for output (e.g., 'de', 'en')
  * @returns Structured sections object
  */
 export async function summarizeIndividualTranscript(
   participantName: string,
-  transcriptText: string
+  transcriptText: string,
+  language?: string
 ): Promise<{
   yesterday?: string
   today?: string
@@ -195,14 +197,16 @@ export async function summarizeIndividualTranscript(
   }
 
   const portkey = initializePortkey()
+  const outputLanguage = language || 'en'
 
   return withRetry(async () => {
     console.log('[Portkey] Starting individual transcript summarization', {
       participantName,
       textLength: transcriptText.length,
+      language: outputLanguage,
     })
 
-    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content):
+    const systemPrompt = `You are a professional standup meeting summarizer. Extract key information from a participant's standup update and return ONLY a JSON object with these fields (omit fields that have no content). Respond in ${outputLanguage}:
 
 {
   "yesterday": "What they completed yesterday",
@@ -241,7 +245,10 @@ Be concise and extract only the most important points. Return ONLY valid JSON, n
       throw new Error('No summary content received from Claude')
     }
 
-    console.log('[Portkey] Raw response from Claude:', responseText.substring(0, 500))
+    console.log(
+      '[Portkey] Raw response from Claude:',
+      responseText.substring(0, 500)
+    )
 
     // Parse the JSON response - try to extract JSON if wrapped in markdown
     let sections: {
