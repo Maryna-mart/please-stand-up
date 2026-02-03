@@ -95,7 +95,7 @@
           "
           class="space-y-1"
         >
-          <p class="text-gray-700 text-sm leading-relaxed">
+          <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
             {{ transcript.text }}
           </p>
         </div>

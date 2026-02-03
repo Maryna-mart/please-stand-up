@@ -290,19 +290,19 @@ const formatSummaryAsText = (sections: {
   const parts: string[] = []
 
   if (sections.yesterday) {
-    parts.push(`\n✅ Yesterday: ${sections.yesterday}`)
+    parts.push(`✅ Yesterday: ${sections.yesterday}`)
   }
   if (sections.today) {
-    parts.push(`\n🎯 Today: ${sections.today}`)
+    parts.push(`🎯 Today: ${sections.today}`)
   }
   if (sections.blockers) {
-    parts.push(`\n🚫 Blockers: ${sections.blockers}`)
+    parts.push(`🚫 Blockers: ${sections.blockers}`)
   }
   if (sections.actionItems) {
-    parts.push(`\n📌 Team Action Items: ${sections.actionItems}`)
+    parts.push(`📌 Team Action Items: ${sections.actionItems}`)
   }
   if (sections.other) {
-    parts.push(`\n📝 Other: ${sections.other}`)
+    parts.push(`📝 Other: ${sections.other}`)
   }
 
   return parts.join('\n')
