@@ -8,7 +8,7 @@ A smart web application designed for remote teams to conduct efficient daily sta
 - **AI Transcription**: Automatic speech-to-text (English & German supported)
 - **Smart Summaries**: AI-generated summaries with yesterday's work, today's plans, and blockers
 - **Email Delivery**: Automated summary distribution to your team
-- **Privacy-Focused**: No data storage, session-based memory, optional password protection
+- **Real-Time Sharing**: Session-based transcript storage with live synchronization across participants
 
 ## Tech Stack
 
