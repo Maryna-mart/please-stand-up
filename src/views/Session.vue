@@ -104,6 +104,7 @@ import {
   parseAPIError,
 } from '../lib/ai-api'
 import { parseSummary } from '../lib/summary-parser'
+import type { LanguageCode } from '../lib/portkey-types'
 import TalkSession from '../components/TalkSession.vue'
 import ParticipantsList from '../components/ParticipantsList.vue'
 import TranscriptView from '../components/TranscriptView.vue'
@@ -204,7 +205,7 @@ const onTranscriptReady = async (data: { text: string; language: string }) => {
     const sections = await summarizeTranscript(
       userName.value || 'Anonymous',
       data.text,
-      data.language as any
+      data.language as LanguageCode
     )
 
     // Format the sections as structured text for display
