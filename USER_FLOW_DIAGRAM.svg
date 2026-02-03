@@ -37,7 +37,7 @@
     <text x="70" y="210" class="action">2. Send code</text>
     <text x="70" y="230" class="action">3. Check inbox</text>
     <text x="70" y="250" class="action">4. Enter 6-digit code</text>
-    <text x="70" y="270" class="action">5. Verify → Ready to join</text>
+    <text x="70" y="270" class="action">5. Get 30-day JWT token</text>
   </g>
 
   <!-- Arrow Step 1 to 2 -->
@@ -120,17 +120,17 @@
     <rect x="50" y="380" width="210" height="220" rx="8" class="backend"/>
     <text x="155" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">send-code</text>
 
-    <text x="70" y="445" class="backend-text" style="font-size: 12px;">POST Request:</text>
-    <text x="80" y="465" class="backend-text" style="font-size: 11px;">email parameter</text>
+    <text x="70" y="445" class="backend-text" style="font-size: 12px;">verify-email:</text>
+    <text x="80" y="465" class="backend-text" style="font-size: 11px;">email + code</text>
 
     <text x="70" y="490" class="backend-text" style="font-size: 12px;">Success Path:</text>
-    <text x="80" y="510" class="backend-text" style="font-size: 11px;">1. Validate email</text>
-    <text x="80" y="525" class="backend-text" style="font-size: 11px;">2. Generate code</text>
-    <text x="80" y="540" class="backend-text" style="font-size: 11px;">3. Hash and store</text>
-    <text x="80" y="555" class="backend-text" style="font-size: 11px;">4. Send via SendGrid</text>
-    <text x="80" y="570" class="backend-text" style="font-size: 11px;">5. Return success</text>
+    <text x="80" y="510" class="backend-text" style="font-size: 11px;">1. Verify code</text>
+    <text x="80" y="525" class="backend-text" style="font-size: 11px;">2. Delete code</text>
+    <text x="80" y="540" class="backend-text" style="font-size: 11px;">3. Gen 30-day JWT</text>
+    <text x="80" y="555" class="backend-text" style="font-size: 11px;">4. Return emailToken</text>
+    <text x="80" y="570" class="backend-text" style="font-size: 11px;">5. Store in localStorage</text>
 
-    <text x="70" y="595" class="backend-text" style="font-size: 11px;">Next: verify-email</text>
+    <text x="70" y="595" class="backend-text" style="font-size: 11px;">Next: create/join</text>
   </g>
 
   <!-- Session Creation Backend -->
@@ -139,9 +139,9 @@
     <text x="385" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">create-session</text>
 
     <text x="300" y="445" class="backend-text" style="font-size: 12px;">Success Path:</text>
-    <text x="310" y="465" class="backend-text" style="font-size: 11px;">1. Store email</text>
-    <text x="310" y="480" class="backend-text" style="font-size: 11px;">2. Gen sessionId</text>
-    <text x="310" y="495" class="backend-text" style="font-size: 11px;">3. Hash password</text>
+    <text x="310" y="465" class="backend-text" style="font-size: 11px;">1. Verify JWT token</text>
+    <text x="310" y="480" class="backend-text" style="font-size: 11px;">2. Extract email</text>
+    <text x="310" y="495" class="backend-text" style="font-size: 11px;">3. Gen sessionId</text>
     <text x="310" y="510" class="backend-text" style="font-size: 11px;">4. Save to Redis</text>
     <text x="310" y="525" class="backend-text" style="font-size: 11px;">5. TTL: 4 hours</text>
 
@@ -283,13 +283,13 @@
 
     <text x="70" y="850" style="font-size: 14px; font-weight: bold; fill: #333;">Key Features:</text>
 
-    <text x="70" y="880" style="font-size: 12px; fill: #333;">✓ Email Verification (Primary Security)</text>
-    <text x="70" y="900" style="font-size: 12px; fill: #333;">✓ Optional Password Protection (Secondary)</text>
+    <text x="70" y="880" style="font-size: 12px; fill: #333;">✓ Email Verification with 30-day JWT Token</text>
+    <text x="70" y="900" style="font-size: 12px; fill: #333;">✓ No Re-Auth on Page Reload (JWT persists)</text>
     <text x="70" y="920" style="font-size: 12px; fill: #333;">✓ Real-Time Sync via Pusher Channels (2 sec latency)</text>
     <text x="70" y="940" style="font-size: 12px; fill: #333;">✓ Auto-Summarization with Claude via Portkey</text>
 
     <text x="750" y="880" style="font-size: 12px; fill: #333;">✓ Retry Logic with Exponential Backoff</text>
-    <text x="750" y="900" style="font-size: 12px; fill: #333;">✓ Raw Email Summaries (No Combining)</text>
+    <text x="750" y="900" style="font-size: 12px; fill: #333;">✓ Session Data Cleared After 4h (JWT persists)</text>
     <text x="750" y="920" style="font-size: 12px; fill: #333;">✓ Automatic Session Cleanup After 4 Hours</text>
     <text x="750" y="940" style="font-size: 12px; fill: #333;">✓ Simultaneous Auto-Logout for All Participants</text>
   </g>

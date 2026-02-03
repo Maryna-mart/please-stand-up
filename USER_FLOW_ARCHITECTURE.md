@@ -43,9 +43,10 @@ Email Verification → Create/Join Session → Session Room → Record Standups 
 - **Code Expiration**: 5 minutes
 - **Code Format**: 6 random digits (000000-999999)
 - **Single-Use**: Code deleted after first successful verification
-- **Email Storage**: Stored in Redis with session object (NOT in localStorage)
-- **localStorage**: Email verification is stateless (no token storage)
-- **Server-Side Validation**: Email address passed with session creation/join requests
+- **Email Storage**: Stored in Redis with session object AND as JWT in localStorage
+- **emailToken (JWT)**: 30-day token stored in localStorage for persistent auth
+- **Token Lifecycle**: Separate from session (enables re-join/new sessions without re-verification)
+- **Server-Side Validation**: JWT signature + expiration validated on every request
 - **Required**: Cannot proceed without verified email
 
 ### Backend Calls
@@ -73,7 +74,7 @@ Failure Path:
 #### POST `/.netlify/functions/verify-email`
 ```typescript
 Request: { email: string, code: string }
-Response: { success: boolean, email: string } | { error: string }
+Response: { success: boolean, emailToken: string } | { error: string }
 
 Success Path:
 1. Validate inputs (email format, code = 6 digits)
@@ -82,12 +83,19 @@ Success Path:
 4. Verify: email matches AND code not expired (< 5 min)
 5. Check attempts (max 5 failed attempts)
 6. Delete code from Redis (single-use)
-7. Return { success: true, email: "user@example.com" }
+7. Generate JWT with HS256 + SESSION_SECRET:
+   {
+     email: "user@example.com",
+     issuedAt: timestamp,
+     expiresAt: timestamp + 30 days
+   }
+8. Return { success: true, emailToken: "eyJ..." }
 
 Frontend Action:
-- Store email temporarily in memory (NOT localStorage)
-- User proceeds to Create/Join with verified email
-- Email included in create-session or join-session request
+- Store emailToken in localStorage (key: 'standup_email_token')
+- Token persists across sessions (30-day lifetime)
+- User proceeds to Create/Join with emailToken
+- Token automatically sent with all API requests
 
 Failure Path:
 1. Code not found/expired → Return "Invalid code or expired"
@@ -96,8 +104,16 @@ Failure Path:
 ```
 
 ### Success Path
-✅ Email verified, JWT stored in localStorage
+✅ Email verified
+✅ 30-day JWT emailToken stored in localStorage
 → Proceed to Create/Join Session (Step 2)
+
+**localStorage After Verification:**
+```javascript
+{
+  'standup_email_token': 'eyJ...'  // 30-day JWT (email inside)
+}
+```
 
 ---
 
@@ -140,7 +156,7 @@ Failure Path:
 #### POST `/.netlify/functions/create-session`
 ```typescript
 Request: {
-  email: string,                    // From email verification
+  emailToken: string,               // 30-day JWT from verification
   participantName: string,
   password?: string
 }
@@ -152,24 +168,27 @@ Response: {
 }
 
 Success Path:
-1. Validate inputs (email format, name, password strength)
-2. Generate sessionId (32-byte entropy) and userId
-3. If password: hash with PBKDF2 (100K iterations)
-4. Create session in Redis with 4-hour TTL:
+1. Verify JWT signature and expiration (HS256 + SESSION_SECRET)
+2. Extract email from JWT payload
+3. Validate inputs (name, password strength)
+4. Generate sessionId (32-byte entropy) and userId
+5. If password: hash with PBKDF2 (100K iterations)
+6. Create session in Redis with 4-hour TTL:
    {
      id: sessionId,
-     email: email,                  // ← Creator's email stored here
+     email: email,                  // ← From JWT, stored for sending emails
      createdAt: timestamp,
      expiresAt: timestamp + 4h,
-     participants: [{ id: userId, name: participantName, ... }],
+     participants: [{ id: userId, name: participantName, email, ... }],
      transcripts: [],
      passwordHash: null | hash,
      ...
    }
-5. Broadcast 'user-joined' event via Pusher
-6. Return { sessionId, userId, expiresAt, participants }
+7. Broadcast 'user-joined' event via Pusher
+8. Return { sessionId, userId, expiresAt, participants }
 
 Failure Path:
+- Invalid/expired JWT → Return 401 "Email verification expired"
 - Invalid inputs → Return 400
 - Redis unavailable → Return 503
 ```
@@ -178,7 +197,7 @@ Failure Path:
 ```typescript
 Request: {
   sessionId: string,
-  email: string,                    // From email verification
+  emailToken: string,               // 30-day JWT from verification
   participantName: string,
   password?: string
 }
@@ -190,21 +209,24 @@ Response: {
 }
 
 Success Path:
-1. Validate inputs (email format, sessionId, name)
-2. Get session from Redis: session:{sessionId}
-3. Verify: exists AND not expired AND < 20 participants
-4. If password protected:
+1. Verify JWT signature and expiration (HS256 + SESSION_SECRET)
+2. Extract email from JWT payload
+3. Validate inputs (sessionId, name)
+4. Get session from Redis: session:{sessionId}
+5. Verify: exists AND not expired AND < 20 participants
+6. If password protected:
    - Hash provided password
    - Compare with session.passwordHash (timing-safe)
    - Return 401 if mismatch
-5. Generate userId for this participant
-6. Add to session.participants[]:
-   { id: userId, name: participantName, joinedAt: timestamp, ... }
-7. Save updated session to Redis
-8. Broadcast 'user-joined' event via Pusher
-9. Return { sessionId, userId, participants, transcripts }
+7. Generate userId for this participant
+8. Add to session.participants[]:
+   { id: userId, name: participantName, email, joinedAt: timestamp, ... }
+9. Save updated session to Redis
+10. Broadcast 'user-joined' event via Pusher
+11. Return { sessionId, userId, participants, transcripts }
 
 Failure Path:
+- Invalid/expired JWT → Return 401 "Email verification expired"
 - Session not found/expired → Return 404/410
 - Session full (20+ participants) → Return 403
 - Wrong password → Return 401
@@ -214,6 +236,16 @@ Failure Path:
 ### Success Path
 ✅ Session created/joined
 → Proceed to Session Room (Step 3)
+
+**localStorage After Create/Join:**
+```javascript
+{
+  'standup_email_token': 'eyJ...',     // 30-day JWT (persists)
+  'standup_session': {...},             // Session object (cleared after 4h)
+  'standup_user_id': 'user123',        // User ID (cleared after 4h)
+  'standup_user_name': 'Alice'         // Name (cleared after 4h)
+}
+```
 
 ---
 
@@ -484,14 +516,17 @@ When GET /get-session returns 404/410:
 
 1. Show spinner → "Session ending, sending emails..."
 2. Wait for completion signal
-3. Clear localStorage:
-   - standup_session
-   - standup_user_id
-   - standup_user_name
+3. Clear localStorage (session data ONLY):
+   - standup_session          ← CLEARED
+   - standup_user_id          ← CLEARED
+   - standup_user_name        ← CLEARED
+   - standup_email_token      ← KEPT (30-day lifecycle)
 4. Clear reactive state (sessionId, userId, participants, transcripts, etc.)
 5. Clear Pusher subscription to session-{sessionId}
 6. Redirect to home: "/"
 7. Show toast: "Standup completed! Summary sent to email."
+
+IMPORTANT: emailToken persists to avoid re-verification for next session
 ```
 
 ### Success Path
@@ -511,14 +546,17 @@ When GET /get-session returns 404/410:
 ## Session Data Lifecycle
 
 ```
-1. EMAIL VERIFICATION (5-10 min, single-use)
-   Code → Verify → Email extracted for next step
+1. EMAIL VERIFICATION (5 min, single-use)
+   Code → Verify → Generate 30-day JWT emailToken
+   Store emailToken in localStorage
 
 2. CREATE SESSION (4-hour TTL starts)
+   JWT validated → Email extracted from token
    Creator's email stored in Redis session object
-   sessionId + userId generated
+   sessionId + userId generated → stored in localStorage
 
 3. PARTICIPANTS JOIN (real-time via Pusher)
+   JWT validated → Email extracted
    Participants added to session.participants[]
    Updates broadcast in real-time
 
@@ -532,12 +570,17 @@ When GET /get-session returns 404/410:
 
 6. AUTO-LOGOUT ALL PARTICIPANTS (via Pusher event)
    Broadcast 'session-finished' event
-   All browsers clear localStorage
+   Clear session data from localStorage (sessionId, userId, userName)
+   KEEP emailToken (30-day lifecycle)
 
-7. SESSION COMPLETELY GONE
+7. SESSION GONE, EMAIL TOKEN PERSISTS
    Redis entry deleted
-   localStorage cleared (sessionId, userId, userName only)
-   Email used for notifications, then forgotten
+   localStorage: sessionId, userId, userName cleared
+   localStorage: emailToken REMAINS (enables next session without re-verification)
+
+8. NEXT SESSION (Within 30 days)
+   User can create/join NEW session using same emailToken
+   No email re-verification needed ✅
 ```
 
 ---
@@ -616,7 +659,9 @@ When GET /get-session returns 404/410:
 - ✅ Rate limited (10 codes/hour per email)
 - ✅ Prevents enumeration (generic messages)
 - ✅ Code hashed with PBKDF2 before Redis storage
-- ✅ Email stored with session (not in localStorage)
+- ✅ 30-day JWT emailToken stored in localStorage (HS256 + SESSION_SECRET)
+- ✅ JWT validated server-side on every request (signature + expiration)
+- ✅ Email stored with session for sending summaries
 
 ### Optional Password (Secondary)
 - ✅ Protects against accidental joins
@@ -631,8 +676,10 @@ When GET /get-session returns 404/410:
 - ✅ Replay Attacks: Single-use verification codes
 - ✅ Credential Stuffing: Email + code required (not passwords)
 - ✅ Session Fixation: sessionId + userId validated against Redis on every request
+- ✅ JWT Forgery: Server validates signature (HS256) and expiration on every request
+- ✅ Token Theft: Limited impact (can only create/join 4h sessions, no persistent access)
 - ✅ XSS: Input validation & DOMPurify on user input
-- ✅ localStorage Tampering: Server validates sessionId + userId against Redis (localStorage not trusted)
+- ✅ localStorage Tampering: Server validates emailToken JWT + sessionId + userId against Redis
 - ✅ Timing Attacks: Timing-safe password comparison (if password used)
 
 ---

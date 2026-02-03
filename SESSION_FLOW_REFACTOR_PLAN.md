@@ -350,11 +350,121 @@
 
 ---
 
-#### File 3: `src/views/Home.vue` or components
-**Changes**:
-1. Add EmailVerificationCard as first step
-2. Only show CreateSessionCard or JoinSessionCard after email verified
-3. Wire `setVerifiedEmail()` from composable on successful verification
+#### File 3: `src/views/Home.vue` - COMPLETE REDESIGN
+**Current State**: Shows Create/Join cards directly (no email verification)
+
+**New Structure**:
+```vue
+<template>
+  <div class="min-h-screen bg-gradient-to-b from-blue-50 to-gray-100 flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl">
+      <!-- Header (unchanged) -->
+      <div class="text-center mb-12">...</div>
+
+      <!-- NEW: Email Status Bar (if already verified) -->
+      <div v-if="emailToken && !showEmailVerification"
+           class="bg-blue-50 p-3 rounded mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-600">Verified email:</span>
+          <span class="font-semibold">{{ extractedEmail }}</span>
+        </div>
+        <button @click="useAnotherEmail" class="text-sm text-blue-600 hover:underline">
+          Use another email
+        </button>
+      </div>
+
+      <!-- Main Content - Conditional Rendering -->
+      <div class="mb-8">
+        <!-- OPTION 1: Email Verification (if NOT verified OR user clicked "use another") -->
+        <EmailVerificationCard
+          v-if="!emailToken || showEmailVerification"
+          @verified="handleEmailVerified"
+          @error="handleError"
+        />
+
+        <!-- OPTION 2: Create/Join Cards (if verified) -->
+        <template v-else>
+          <CreateSessionCard
+            v-if="!hasSessionId"
+            :email-token="emailToken"
+            @error="handleError"
+          />
+          <JoinSessionCard
+            v-else
+            :email-token="emailToken"
+            :initial-session-id="sessionId"
+            @error="handleError"
+          />
+        </template>
+      </div>
+
+      <!-- Error Alert (unchanged) -->
+      <!-- Privacy Notice (unchanged) -->
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import EmailVerificationCard from '../components/EmailVerificationCard.vue'  // NEW
+import CreateSessionCard from '../components/CreateSessionCard.vue'
+import JoinSessionCard from '../components/JoinSessionCard.vue'
+
+const route = useRoute()
+const errorMessage = ref('')
+const emailToken = ref<string | null>(null)
+const showEmailVerification = ref(false)
+
+const sessionId = computed(() => (route.query.sessionId as string) || '')
+const hasSessionId = computed(() => !!sessionId.value)
+
+// Extract email from JWT for display
+const extractedEmail = computed(() => {
+  if (!emailToken.value) return ''
+  try {
+    const payload = JSON.parse(atob(emailToken.value.split('.')[1]))
+    return payload.email
+  } catch {
+    return ''
+  }
+})
+
+onMounted(() => {
+  // Load emailToken from localStorage
+  emailToken.value = localStorage.getItem('standup_email_token')
+  errorMessage.value = ''
+})
+
+function handleEmailVerified(token: string) {
+  emailToken.value = token
+  localStorage.setItem('standup_email_token', token)
+  showEmailVerification.value = false
+}
+
+function useAnotherEmail() {
+  localStorage.removeItem('standup_email_token')
+  emailToken.value = null
+  showEmailVerification.value = true
+}
+
+const handleError = (message: string) => {
+  errorMessage.value = message
+}
+</script>
+```
+
+**Key Changes**:
+1. **NEW COMPONENT**: EmailVerificationCard.vue (Step 1)
+2. **Email Status Bar**: Shows verified email + "Use another email" button
+3. **Conditional Rendering**: Email verification → Create/Join
+4. **emailToken Management**: Stored in localStorage, passed to Create/Join cards
+5. **extractedEmail**: Helper to decode JWT and show email
+6. **useAnotherEmail()**: Clears token and shows verification again
+
+**Files to Create**:
+- `src/components/EmailVerificationCard.vue` (NEW)
+- `src/components/VerificationCodeCard.vue` (NEW - shown after sending code)
 
 ---
 
