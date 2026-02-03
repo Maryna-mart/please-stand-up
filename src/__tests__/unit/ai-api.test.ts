@@ -237,7 +237,10 @@ describe('ai-api: generateSummary', () => {
     ]
 
     await expect(
-      generateSummary('session-id', invalidTranscripts as unknown as Transcript[])
+      generateSummary(
+        'session-id',
+        invalidTranscripts as unknown as Transcript[]
+      )
     ).rejects.toThrow('participant name and text')
   })
 })
@@ -372,7 +375,9 @@ describe('ai-api: saveTranscript', () => {
     ).rejects.toThrow('Session ID and transcript are required')
 
     await expect(
-      saveTranscript('session-id', { participantName: 'Alice' } as unknown as Parameters<typeof saveTranscript>[1])
+      saveTranscript('session-id', {
+        participantName: 'Alice',
+      } as unknown as Parameters<typeof saveTranscript>[1])
     ).rejects.toThrow('participantName and text')
   })
 

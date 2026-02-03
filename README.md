@@ -135,10 +135,11 @@ SESSION_SECRET=your_random_32_char_secret
 
 | Document | Purpose |
 |----------|---------|
-| **[SESSION_FLOW.md](SESSION_FLOW.md)** | Session architecture, routing logic, user flows (8 scenarios) |
-| **[IMPLEMENTATION.md](IMPLEMENTATION.md)** | Development phases, current progress, roadmap |
-| **[USER_JOURNEY.md](USER_JOURNEY.md)** | High-level user experience (6-step flow) |
-| **[package.json](package.json)** | Dependencies, tech stack versions, scripts |
+| **[USER_FLOW_ARCHITECTURE.md](USER_FLOW_ARCHITECTURE.md)** | Complete end-to-end user flow with UI steps, business rules, backend calls, and success/failure paths (+ [visual diagram](USER_FLOW_DIAGRAM.svg)) |
+| **[IMPLEMENTATION.md](IMPLEMENTATION.md)** | Completed phases summary and current implementation status |
+| **[SESSION_FLOW.md](SESSION_FLOW.md)** | Session architecture, routing logic, and edge cases |
+| **[SERVICE_SETUP.md](SERVICE_SETUP.md)** | External service configuration (Pusher, Deepgram, Portkey, SendGrid) |
+| **[TESTING_GUIDE.md](TESTING_GUIDE.md)** | Unit tests and manual testing scenarios |
 
 **Development Guidelines:**
 - Commit format: Use `/commit` skill (enforces Conventional Commits, 50-char limit)

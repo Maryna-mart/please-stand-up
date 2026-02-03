@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1400 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-size: 24px; font-weight: bold; fill: #1a1a1a; }
+      .step-title { font-size: 18px; font-weight: bold; fill: #fff; }
+      .step-box { fill: #4A90E2; stroke: #2E5C8A; stroke-width: 2; }
+      .action { font-size: 13px; fill: #333; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-label { font-size: 12px; fill: #555; }
+      .success { fill: #27AE60; stroke: #1E8449; stroke-width: 2; }
+      .success-text { fill: #fff; }
+      .failure { fill: #E74C3C; stroke: #C0392B; stroke-width: 2; }
+      .failure-text { fill: #fff; }
+      .backend { fill: #9B59B6; stroke: #6C3483; stroke-width: 2; }
+      .backend-text { fill: #fff; }
+      .browser { fill: #F39C12; stroke: #D68910; stroke-width: 2; }
+      .browser-text { fill: #fff; }
+      .divider { stroke: #ccc; stroke-width: 1; stroke-dasharray: 5,5; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" class="title">End-to-End User Flow Architecture</text>
+  <text x="700" y="65" text-anchor="middle" style="font-size: 14px; fill: #666;">Email Verification → Create/Join → Record → Finish and Auto-Logout</text>
+
+  <!-- Step 1: Email Verification -->
+  <g>
+    <rect x="50" y="100" width="230" height="180" rx="8" class="step-box"/>
+    <text x="165" y="130" text-anchor="middle" class="step-title">STEP 1</text>
+    <text x="165" y="155" text-anchor="middle" class="step-title" style="font-size: 16px;">Email Verification</text>
+
+    <text x="70" y="190" class="action">1. Enter email</text>
+    <text x="70" y="210" class="action">2. Send code</text>
+    <text x="70" y="230" class="action">3. Check inbox</text>
+    <text x="70" y="250" class="action">4. Enter 6-digit code</text>
+    <text x="70" y="270" class="action">5. Verify → Ready to join</text>
+  </g>
+
+  <!-- Arrow Step 1 to 2 -->
+  <path d="M 280 190 L 330 190" class="arrow"/>
+  <text x="305" y="180" text-anchor="middle" class="arrow-label">✓</text>
+
+  <!-- Step 2: Create/Join Session -->
+  <g>
+    <rect x="330" y="100" width="230" height="180" rx="8" class="step-box"/>
+    <text x="445" y="130" text-anchor="middle" class="step-title">STEP 2</text>
+    <text x="445" y="155" text-anchor="middle" class="step-title" style="font-size: 16px;">Create/Join</text>
+
+    <text x="350" y="190" class="action">Create Session:</text>
+    <text x="360" y="210" class="action">• Name (required)</text>
+    <text x="360" y="230" class="action">• Password (optional)</text>
+
+    <text x="350" y="260" class="action">Join Session:</text>
+    <text x="360" y="280" class="action">• Name + Password</text>
+  </g>
+
+  <!-- Arrow Step 2 to 3 -->
+  <path d="M 560 190 L 610 190" class="arrow"/>
+  <text x="585" y="180" text-anchor="middle" class="arrow-label">✓</text>
+
+  <!-- Step 3: Session Room -->
+  <g>
+    <rect x="610" y="100" width="230" height="180" rx="8" class="step-box"/>
+    <text x="725" y="130" text-anchor="middle" class="step-title">STEP 3</text>
+    <text x="725" y="155" text-anchor="middle" class="step-title" style="font-size: 16px;">Session Room</text>
+
+    <text x="630" y="190" class="action">Real-time via Pusher:</text>
+    <text x="640" y="210" class="action">• Participants list</text>
+    <text x="640" y="230" class="action">• 4-hour countdown</text>
+    <text x="640" y="250" class="action">• Summaries section</text>
+    <text x="640" y="270" class="action">• Talk button</text>
+  </g>
+
+  <!-- Arrow Step 3 to 4 -->
+  <path d="M 840 190 L 890 190" class="arrow"/>
+  <text x="865" y="180" text-anchor="middle" class="arrow-label">✓</text>
+
+  <!-- Step 4: Recording -->
+  <g>
+    <rect x="890" y="100" width="230" height="180" rx="8" class="step-box"/>
+    <text x="1005" y="130" text-anchor="middle" class="step-title">STEP 4</text>
+    <text x="1005" y="155" text-anchor="middle" class="step-title" style="font-size: 16px;">Record Standups</text>
+
+    <text x="910" y="190" class="action">For each participant:</text>
+    <text x="920" y="210" class="action">• Click Talk</text>
+    <text x="920" y="230" class="action">• Record (max 2 min)</text>
+    <text x="920" y="250" class="action">• Transcribe + Sum</text>
+    <text x="920" y="270" class="action">• Save to Redis</text>
+  </g>
+
+  <!-- Arrow Step 4 to 5 -->
+  <path d="M 1120 190 L 1170 190" class="arrow"/>
+  <text x="1145" y="180" text-anchor="middle" class="arrow-label">✓</text>
+
+  <!-- Step 5: Finish and Auto-Logout -->
+  <g>
+    <rect x="1170" y="100" width="220" height="180" rx="8" class="success"/>
+    <text x="1280" y="130" text-anchor="middle" class="step-title">STEP 5</text>
+    <text x="1280" y="150" text-anchor="middle" class="step-title" style="font-size: 14px;">Standup is</text>
+    <text x="1280" y="170" text-anchor="middle" class="step-title" style="font-size: 14px;">Finished</text>
+
+    <text x="1190" y="205" class="success-text" style="font-size: 12px;">1. Click button</text>
+    <text x="1190" y="225" class="success-text" style="font-size: 12px;">2. Send emails</text>
+    <text x="1190" y="245" class="success-text" style="font-size: 12px;">3. Auto-logout</text>
+    <text x="1190" y="265" class="success-text" style="font-size: 12px;">4. Redirect home</text>
+  </g>
+
+  <!-- Divider -->
+  <line x1="50" y1="320" x2="1390" y2="320" class="divider"/>
+
+  <!-- Second Row: Backend Details -->
+  <text x="50" y="360" style="font-size: 18px; font-weight: bold; fill: #333;">Backend and Data Flow</text>
+
+  <!-- Email Verification Backend -->
+  <g>
+    <rect x="50" y="380" width="210" height="220" rx="8" class="backend"/>
+    <text x="155" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">send-code</text>
+
+    <text x="70" y="445" class="backend-text" style="font-size: 12px;">POST Request:</text>
+    <text x="80" y="465" class="backend-text" style="font-size: 11px;">email parameter</text>
+
+    <text x="70" y="490" class="backend-text" style="font-size: 12px;">Success Path:</text>
+    <text x="80" y="510" class="backend-text" style="font-size: 11px;">1. Validate email</text>
+    <text x="80" y="525" class="backend-text" style="font-size: 11px;">2. Generate code</text>
+    <text x="80" y="540" class="backend-text" style="font-size: 11px;">3. Hash and store</text>
+    <text x="80" y="555" class="backend-text" style="font-size: 11px;">4. Send via SendGrid</text>
+    <text x="80" y="570" class="backend-text" style="font-size: 11px;">5. Return success</text>
+
+    <text x="70" y="595" class="backend-text" style="font-size: 11px;">Next: verify-email</text>
+  </g>
+
+  <!-- Session Creation Backend -->
+  <g>
+    <rect x="280" y="380" width="210" height="220" rx="8" class="backend"/>
+    <text x="385" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">create-session</text>
+
+    <text x="300" y="445" class="backend-text" style="font-size: 12px;">Success Path:</text>
+    <text x="310" y="465" class="backend-text" style="font-size: 11px;">1. Store email</text>
+    <text x="310" y="480" class="backend-text" style="font-size: 11px;">2. Gen sessionId</text>
+    <text x="310" y="495" class="backend-text" style="font-size: 11px;">3. Hash password</text>
+    <text x="310" y="510" class="backend-text" style="font-size: 11px;">4. Save to Redis</text>
+    <text x="310" y="525" class="backend-text" style="font-size: 11px;">5. TTL: 4 hours</text>
+
+    <text x="300" y="555" class="backend-text" style="font-size: 12px;">Response:</text>
+    <text x="310" y="570" class="backend-text" style="font-size: 11px;">sessionId, userId,</text>
+    <text x="310" y="585" class="backend-text" style="font-size: 11px;">expiresAt</text>
+  </g>
+
+  <!-- Recording Backend -->
+  <g>
+    <rect x="510" y="380" width="210" height="220" rx="8" class="backend"/>
+    <text x="615" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">transcribe</text>
+
+    <text x="530" y="445" class="backend-text" style="font-size: 12px;">↓ save-transcript</text>
+    <text x="530" y="465" class="backend-text" style="font-size: 12px;">↓ summarize-trans</text>
+
+    <text x="530" y="495" class="backend-text" style="font-size: 11px;">Flow:</text>
+    <text x="540" y="515" class="backend-text" style="font-size: 11px;">1. Audio to Deepgram</text>
+    <text x="540" y="530" class="backend-text" style="font-size: 11px;">2. Transcribe (2-5s)</text>
+    <text x="540" y="545" class="backend-text" style="font-size: 11px;">3. Claude Summary</text>
+    <text x="540" y="560" class="backend-text" style="font-size: 11px;">4. Save to Redis</text>
+    <text x="540" y="575" class="backend-text" style="font-size: 11px;">5. Broadcast Pusher</text>
+  </g>
+
+  <!-- Finish Session Backend -->
+  <g>
+    <rect x="740" y="380" width="210" height="220" rx="8" class="backend"/>
+    <text x="845" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">finish-session</text>
+
+    <text x="760" y="445" class="backend-text" style="font-size: 12px;">Success Path:</text>
+    <text x="770" y="465" class="backend-text" style="font-size: 11px;">1. Get transcripts</text>
+    <text x="770" y="480" class="backend-text" style="font-size: 11px;">2. Format email</text>
+    <text x="770" y="495" class="backend-text" style="font-size: 11px;">3. Send via SendGrid</text>
+    <text x="770" y="510" class="backend-text" style="font-size: 11px;">4. Delete Redis</text>
+    <text x="770" y="525" class="backend-text" style="font-size: 11px;">5. Broadcast Pusher</text>
+
+    <text x="760" y="555" class="backend-text" style="font-size: 11px;">Auto-logout all</text>
+    <text x="760" y="570" class="backend-text" style="font-size: 11px;">participants</text>
+  </g>
+
+  <!-- Data Storage -->
+  <g>
+    <rect x="970" y="380" width="210" height="220" rx="8" style="fill: #1ABC9C; stroke: #16A085; stroke-width: 2;"/>
+    <text x="1075" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">REDIS</text>
+
+    <text x="990" y="445" class="backend-text" style="font-size: 12px;">Stored Data:</text>
+
+    <text x="1000" y="465" class="backend-text" style="font-size: 11px;">session:id</text>
+    <text x="1010" y="480" class="backend-text" style="font-size: 10px;">participants</text>
+    <text x="1010" y="495" class="backend-text" style="font-size: 10px;">transcripts</text>
+    <text x="1010" y="510" class="backend-text" style="font-size: 10px;">TTL: 4 hours</text>
+
+    <text x="1000" y="540" class="backend-text" style="font-size: 11px;">verification</text>
+    <text x="1010" y="555" class="backend-text" style="font-size: 10px;">email, code</text>
+    <text x="1010" y="570" class="backend-text" style="font-size: 10px;">TTL: 5 min</text>
+  </g>
+
+  <!-- Real-time Sync -->
+  <g>
+    <rect x="1200" y="380" width="190" height="220" rx="8" style="fill: #E67E22; stroke: #D35400; stroke-width: 2;"/>
+    <text x="1295" y="410" text-anchor="middle" class="backend-text" style="font-size: 14px; font-weight: bold;">PUSHER</text>
+
+    <text x="1220" y="445" class="backend-text" style="font-size: 12px;">Real-Time Events:</text>
+
+    <text x="1230" y="465" class="backend-text" style="font-size: 10px;">user-joined</text>
+    <text x="1230" y="480" class="backend-text" style="font-size: 10px;">user-left</text>
+    <text x="1230" y="495" class="backend-text" style="font-size: 10px;">status-changed</text>
+    <text x="1230" y="510" class="backend-text" style="font-size: 10px;">transcript-added</text>
+    <text x="1230" y="525" class="backend-text" style="font-size: 10px;">session-finished</text>
+
+    <text x="1220" y="555" class="backend-text" style="font-size: 11px;">Latency:</text>
+    <text x="1230" y="570" class="backend-text" style="font-size: 10px;">2 seconds or less</text>
+  </g>
+
+  <!-- Divider 2 -->
+  <line x1="50" y1="640" x2="1390" y2="640" class="divider"/>
+
+  <!-- Third Row: Session Lifecycle -->
+  <text x="50" y="680" style="font-size: 18px; font-weight: bold; fill: #333;">Session Data Lifecycle</text>
+
+  <g>
+    <!-- CREATE -->
+    <rect x="50" y="710" width="120" height="60" rx="6" class="success"/>
+    <text x="110" y="730" text-anchor="middle" class="success-text" style="font-size: 12px; font-weight: bold;">CREATE</text>
+    <text x="110" y="750" text-anchor="middle" class="success-text" style="font-size: 11px;">4h TTL</text>
+
+    <!-- Arrow -->
+    <path d="M 170 740 L 220 740" class="arrow"/>
+
+    <!-- JOIN -->
+    <rect x="220" y="710" width="120" height="60" rx="6" class="success"/>
+    <text x="280" y="735" text-anchor="middle" class="success-text" style="font-size: 12px; font-weight: bold;">JOIN</text>
+    <text x="280" y="752" text-anchor="middle" class="success-text" style="font-size: 10px;">Participants</text>
+
+    <!-- Arrow -->
+    <path d="M 340 740 L 390 740" class="arrow"/>
+
+    <!-- RECORD -->
+    <rect x="390" y="710" width="120" height="60" rx="6" class="success"/>
+    <text x="450" y="730" text-anchor="middle" class="success-text" style="font-size: 12px; font-weight: bold;">RECORD</text>
+    <text x="450" y="750" text-anchor="middle" class="success-text" style="font-size: 11px;">Standups</text>
+
+    <!-- Arrow -->
+    <path d="M 510 740 L 560 740" class="arrow"/>
+
+    <!-- FINISH -->
+    <rect x="560" y="710" width="120" height="60" rx="6" class="failure"/>
+    <text x="620" y="730" text-anchor="middle" class="failure-text" style="font-size: 12px; font-weight: bold;">FINISH</text>
+    <text x="620" y="750" text-anchor="middle" class="failure-text" style="font-size: 11px;">Send Email</text>
+
+    <!-- Arrow -->
+    <path d="M 680 740 L 730 740" class="arrow"/>
+
+    <!-- DELETE -->
+    <rect x="730" y="710" width="120" height="60" rx="6" style="fill: #C0392B; stroke: #A93226; stroke-width: 2;"/>
+    <text x="790" y="735" text-anchor="middle" style="fill: #fff; font-size: 12px; font-weight: bold;">DELETE</text>
+    <text x="790" y="752" text-anchor="middle" style="fill: #fff; font-size: 10px;">from Redis</text>
+
+    <!-- Arrow -->
+    <path d="M 850 740 L 900 740" class="arrow"/>
+
+    <!-- LOGOUT -->
+    <rect x="900" y="710" width="120" height="60" rx="6" style="fill: #8E44AD; stroke: #6C3483; stroke-width: 2;"/>
+    <text x="960" y="735" text-anchor="middle" style="fill: #fff; font-size: 12px; font-weight: bold;">AUTO-LOGOUT</text>
+    <text x="960" y="752" text-anchor="middle" style="fill: #fff; font-size: 10px;">All Participants</text>
+
+    <!-- Arrow -->
+    <path d="M 1020 740 L 1070 740" class="arrow"/>
+
+    <!-- REDIRECT -->
+    <rect x="1070" y="710" width="120" height="60" rx="6" class="success"/>
+    <text x="1130" y="730" text-anchor="middle" class="success-text" style="font-size: 12px; font-weight: bold;">REDIRECT</text>
+    <text x="1130" y="750" text-anchor="middle" class="success-text" style="font-size: 11px;">to HOME</text>
+  </g>
+
+  <!-- Key Features Box -->
+  <g>
+    <rect x="50" y="820" width="1340" height="150" rx="8" style="fill: #ECF0F1; stroke: #95A5A6; stroke-width: 2;"/>
+
+    <text x="70" y="850" style="font-size: 14px; font-weight: bold; fill: #333;">Key Features:</text>
+
+    <text x="70" y="880" style="font-size: 12px; fill: #333;">✓ Email Verification (Primary Security)</text>
+    <text x="70" y="900" style="font-size: 12px; fill: #333;">✓ Optional Password Protection (Secondary)</text>
+    <text x="70" y="920" style="font-size: 12px; fill: #333;">✓ Real-Time Sync via Pusher Channels (2 sec latency)</text>
+    <text x="70" y="940" style="font-size: 12px; fill: #333;">✓ Auto-Summarization with Claude via Portkey</text>
+
+    <text x="750" y="880" style="font-size: 12px; fill: #333;">✓ Retry Logic with Exponential Backoff</text>
+    <text x="750" y="900" style="font-size: 12px; fill: #333;">✓ Raw Email Summaries (No Combining)</text>
+    <text x="750" y="920" style="font-size: 12px; fill: #333;">✓ Automatic Session Cleanup After 4 Hours</text>
+    <text x="750" y="940" style="font-size: 12px; fill: #333;">✓ Simultaneous Auto-Logout for All Participants</text>
+  </g>
+</svg>

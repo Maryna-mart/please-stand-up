@@ -24,10 +24,19 @@ Replace inline email input with **verified email login** before accessing standu
 
 **Why Email Verification?**
 - ✅ Prevents email typos (user validates before entering)
-- ✅ No password needed (verification code = passwordless auth)
+- ✅ Email is the primary credential (5-min verification code, single-use)
 - ✅ Better security (prevents fake emails, guarantees deliverability)
 - ✅ Better UX (simple 6-digit code entry)
-- ✅ Email persists across sessions (localStorage + JWT token)
+- ✅ Email stored in Redis with session (not long-lived in localStorage)
+
+### Next Steps
+**See [SESSION_FLOW_REFACTOR_PLAN.md](SESSION_FLOW_REFACTOR_PLAN.md)** for complete implementation strategy:
+- Part 1: Documentation refactoring (6 sections, email-based auth model)
+- Part 2: Code refactoring (5 files, email verification + session management)
+- Part 3: Test refactoring (~50 new tests, all scenarios)
+- Part 4: 4-week implementation timeline
+
+**Status**: Plan created ✅, awaiting execution
 
 ### 7.A.1 Frontend: Email Verification Components
 
@@ -287,122 +296,51 @@ SESSION_SECRET=your-random-32-char-string
 
 ---
 
-# APPENDIX: Completed Phases
+## Completed Phases Summary
 
-## Phase 3.6: Password Protection ✅
-
+### Phase 3.6: Password Protection ✅
 Sessions can be optionally protected with passwords using PBKDF2 hashing and timing-safe comparison.
 
-### Implementation
-- **Frontend**: CreateSessionCard + JoinSessionCard with password input
-- **Backend**: PBKDF2 hashing (100K iterations), timing-safe comparison
-- **Utilities**: `src/lib/password-utils.ts`, `src/lib/sanitize.ts`
+### Phase 6: AI Integration ✅
+- **Transcription**: Deepgram Nova-2 STT with auto language detection (German, English, Spanish, French, etc.)
+- **Summarization**: Claude 3.5 Sonnet via Portkey with structured output (yesterday, today, blockers, actionItems)
+- **Real-time Summarization**: Individual transcripts summarized immediately after recording
+- **Retry Logic**: Exponential backoff (100ms, 300ms, 900ms) for transient failures
+- **Error Handling**: Smart, contextual error messages (specific for permissions, generic during retries)
 
-### Key Files
-- [src/components/CreateSessionCard.vue](src/components/CreateSessionCard.vue)
-- [src/components/JoinSessionCard.vue](src/components/JoinSessionCard.vue)
-
----
-
-## Phase 6: AI Integration ✅
-
-### 6.1 Audio Transcription (Deepgram)
-- Netlify Function: `transcribe.ts`
-- Deepgram API integration with auto language detection
-- Error handling, retry logic, 25MB file limit
-- Supports: webm, mp3, mp4, wav
-
-### 6.2 Summarization (Portkey + Claude)
-- Netlify Functions: `summarize.ts`, `summarize-transcript.ts`
-- Claude 3.5 Sonnet via Portkey
-- Structured JSON output: yesterday, today, blockers, actionItems, other
-- Real-time individual transcript summarization
-- Error handling with fallback to raw text
-
-### 6.3 Frontend API Client
-- `src/lib/ai-api.ts`: uploadAudio(), generateSummary(), summarizeTranscript(), finishSession()
-- Retry logic (3x with exponential backoff)
-- Timeout handling (120s)
-- Error parsing and user feedback
-
-### 6.4 Component Integration
-- **TalkSession.vue**: Fully controlled component, no internal state duplication
-- **Session.vue**: Manages summarizing state, real-time transcript display
-- **TranscriptView.vue**: Parses and displays structured sections
-
-### 6.5 Recent Improvements
-- Real-time individual transcript summarization (immediately after transcription)
-- Structured sections displayed in UI
-- Button state management during summarization
-- UI text standardization ("status" instead of "standup")
-- Removed separate status message element
+### Phase 6.7: Real-time Sync ✅
+- **Transcript Persistence**: Saved to Redis, visible for 4 hours
+- **Broadcasting**: Pusher Channels for instant sync across browsers (<2s latency)
+- **Load on Join**: New participants see all existing transcripts immediately
+- **Deduplication**: Prevents duplicate transcripts from multiple participants
 
 ---
 
-## Deepgram Language Support
+## Current Implementation Status
 
-**Service**: Deepgram Nova-2 STT
-**Model**: nova-2 (latest, most accurate)
-**Auto-detect**: Enabled by default
-**API**: https://api.deepgram.com/v1/listen
-
-### Supported Languages
-**European**: German, English (GB/US), Spanish, French, Italian, Polish, Portuguese, Russian, Swedish, Dutch, Ukrainian
-
-**Asian**: Hindi, Indonesian, Japanese, Korean, Mandarin, Traditional Chinese, Thai, Filipino, Vietnamese, Malay
-
-**Other**: Arabic, Hebrew, Greek, Turkish
-
-### Features
-- Smart formatting (punctuation, capitalization)
-- Automatic language detection
-- Supports: webm, mp3, mp4, wav
-- Max file size: 25MB
-- Latency: 1-3 seconds
-
----
-
-## Architecture Summary
-
-### Security ✅
-- XSS prevention (DOMPurify)
-- Rate limiting (5 create/h, 10 join/h)
-- CSRF protection
-- PBKDF2 hashing (100K iterations)
-- Timing-safe comparison
-- AES-256-GCM email encryption
-- Input validation (client + server)
-- Max 20 participants/session
-- Session IDs: 32 bytes entropy
-
-### Backend ✅
-- Netlify Functions (serverless)
-- Upstash Redis (4h TTL, 10K req/day free)
-- Functions: create-session, get-session, join-session, transcribe, summarize, finish-session
-
-### Real-time ✅
-- Pusher Channels (200K msgs/day, 100 concurrent)
-- Events: user-joined, user-left, timer-started, timer-stopped, status-changed
-
-### Testing ✅
-- Unit: Vitest, >80% coverage
-- Integration: Vitest
-- E2E: Playwright
-
-### Features Implemented ✅
-- Session creation & management
-- Real-time updates via Pusher
-- Password protection (PBKDF2)
-- Rate limiting
+### ✅ Completed & Tested
+- Session management (create, join, leave, persistence)
+- Real-time participant updates (Pusher Channels)
+- Audio recording with synchronized timer
+- AI transcription (Deepgram) with language auto-detection
+- Structured summarization (Claude via Portkey)
+- Transcript persistence (Redis with 4-hour TTL)
+- Real-time broadcasting and multi-browser sync
+- Retry logic with exponential backoff
+- Smart error messages (prevents "[object Object]" errors)
+- Password protection (PBKDF2 hashing)
 - Input validation & XSS prevention
-- localStorage persistence
-- Audio recording (120s timer)
-- Real-time participant status
-- AI summarization (Claude via Portkey)
-- Audio transcription (Deepgram)
-- Structured summary display
+- Rate limiting
+- Unit tests (238+ passing, >80% coverage)
 
-### Features In Progress ⏳
-- Email verification login
-- Email-based session finalization
-- Auto-send summary email
+### ⏳ In Progress
+- Phase 7.A: Email Verification Login (passwordless auth before accessing standup)
+- Phase 7: Email Infrastructure (auto-send summary on session finish)
+
+### Architecture Summary
+- **Frontend**: Vue 3 + TypeScript + Vite + Tailwind CSS
+- **Backend**: Netlify Functions (serverless)
+- **Storage**: Upstash Redis (4h TTL, 10K req/day free)
+- **Real-time**: Pusher Channels (200K msgs/day, 100 concurrent)
+- **AI Services**: Deepgram (transcription), Portkey/Claude (summarization), SendGrid (email)
+- **Security**: XSS prevention, PBKDF2 hashing, timing-safe comparison, AES-256-GCM encryption, rate limiting
