@@ -1,12 +1,14 @@
 /**
  * Frontend AI API Client
  * Handles communication with Netlify AI functions (transcribe, summarize)
- * Backend handles retry logic for transient failures
+ * Includes exponential backoff retry logic for transient failures
  */
 
 import type { LanguageCode, Transcript } from './portkey-types'
 
 const REQUEST_TIMEOUT_MS = 120000 // 2 minutes for audio processing
+const MAX_RETRIES = 3
+const RETRY_DELAYS = [100, 300, 900] // milliseconds with exponential backoff
 
 interface TranscriptResult {
   text: string
@@ -22,6 +24,74 @@ interface APIError {
   message: string
   code: string
   status: number
+}
+
+/**
+ * Check if an error is retryable (transient)
+ * Non-retryable errors: validation (4xx except 429), auth errors
+ * Retryable errors: rate limit (429), server errors (5xx), timeouts, network errors
+ */
+function isRetryableError(error: unknown, statusCode?: number): boolean {
+  // Network/timeout errors are always retryable
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') return true // timeout
+    if (error.message.includes('timeout')) return true
+    if (error.message.includes('fetch') || error.message.includes('network')) return true
+  }
+
+  // HTTP status code logic
+  if (statusCode) {
+    if (statusCode === 429) return true // Rate limited - retry
+    if (statusCode >= 500) return true // Server errors - retry
+    if (statusCode >= 400) return false // Client/validation errors - don't retry
+  }
+
+  // Unknown errors - don't retry
+  return false
+}
+
+/**
+ * Retry a function with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  operationName: string
+): Promise<T> {
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      // Check if error is retryable
+      const statusCode = (error as Error & { status?: number }).status
+      if (!isRetryableError(error, statusCode)) {
+        // Non-retryable error - fail immediately
+        throw error
+      }
+
+      // If this was the last attempt, throw the error
+      if (attempt === MAX_RETRIES) {
+        console.error(
+          `[${operationName}] Failed after ${MAX_RETRIES} attempts:`,
+          error
+        )
+        throw error
+      }
+
+      // Wait before retrying
+      const delayMs = RETRY_DELAYS[attempt - 1]
+      console.log(
+        `[${operationName}] Attempt ${attempt} failed, retrying in ${delayMs}ms...`
+      )
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+    }
+  }
+
+  // Should never reach here, but satisfy TypeScript
+  throw lastError
 }
 
 /**
@@ -64,48 +134,50 @@ export async function uploadAudio(
     formData.append('language', language)
   }
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  return retryWithBackoff(async () => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  try {
-    const response = await fetch('/.netlify/functions/transcribe', {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    })
+    try {
+      const response = await fetch('/.netlify/functions/transcribe', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      })
 
-    clearTimeout(timeoutId)
+      clearTimeout(timeoutId)
 
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as {
-        error?: string
-        code?: string
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({}))) as {
+          error?: string
+          code?: string
+        }
+        const err = new Error(error.error || 'Transcription failed')
+        ;(err as Error & { status?: number }).status = response.status
+        throw err
       }
-      const err = new Error(error.error || 'Transcription failed')
-      ;(err as Error & { status?: number }).status = response.status
-      throw err
+
+      const data = (await response.json()) as {
+        success?: boolean
+        transcript?: { text: string; language: LanguageCode }
+        error?: { message: string; code: string }
+      }
+
+      if (!data.success || !data.transcript) {
+        throw new Error(data.error?.message || 'Transcription failed')
+      }
+
+      return data.transcript
+    } catch (error) {
+      clearTimeout(timeoutId)
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Transcription request timeout')
+      }
+
+      throw error
     }
-
-    const data = (await response.json()) as {
-      success?: boolean
-      transcript?: { text: string; language: LanguageCode }
-      error?: { message: string; code: string }
-    }
-
-    if (!data.success || !data.transcript) {
-      throw new Error(data.error?.message || 'Transcription failed')
-    }
-
-    return data.transcript
-  } catch (error) {
-    clearTimeout(timeoutId)
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Transcription request timeout')
-    }
-
-    throw error
-  }
+  }, 'uploadAudio')
 }
 
 /**
@@ -286,61 +358,63 @@ export async function summarizeTranscript(
     throw new Error('Participant name and transcript text are required')
   }
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  return retryWithBackoff(async () => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  try {
-    const response = await fetch('/.netlify/functions/summarize-transcript', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        participantName,
-        transcriptText,
-        language,
-      }),
-      signal: controller.signal,
-    })
+    try {
+      const response = await fetch('/.netlify/functions/summarize-transcript', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          participantName,
+          transcriptText,
+          language,
+        }),
+        signal: controller.signal,
+      })
 
-    clearTimeout(timeoutId)
+      clearTimeout(timeoutId)
 
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({}))) as {
-        error?: string
-        code?: string
+      if (!response.ok) {
+        const error = (await response.json().catch(() => ({}))) as {
+          error?: string
+          code?: string
+        }
+        const err = new Error(error.error || 'Transcript summarization failed')
+        ;(err as Error & { status?: number }).status = response.status
+        throw err
       }
-      const err = new Error(error.error || 'Transcript summarization failed')
-      ;(err as Error & { status?: number }).status = response.status
-      throw err
-    }
 
-    const data = (await response.json()) as {
-      success?: boolean
-      sections?: {
-        yesterday?: string
-        today?: string
-        blockers?: string
-        actionItems?: string
-        other?: string
+      const data = (await response.json()) as {
+        success?: boolean
+        sections?: {
+          yesterday?: string
+          today?: string
+          blockers?: string
+          actionItems?: string
+          other?: string
+        }
+        error?: { message: string; code: string }
       }
-      error?: { message: string; code: string }
+
+      if (!data.success || !data.sections) {
+        throw new Error(data.error?.message || 'Transcript summarization failed')
+      }
+
+      return data.sections
+    } catch (error) {
+      clearTimeout(timeoutId)
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Transcript summarization request timeout')
+      }
+
+      throw error
     }
-
-    if (!data.success || !data.sections) {
-      throw new Error(data.error?.message || 'Transcript summarization failed')
-    }
-
-    return data.sections
-  } catch (error) {
-    clearTimeout(timeoutId)
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Transcript summarization request timeout')
-    }
-
-    throw error
-  }
+  }, 'summarizeTranscript')
 }
 
 /**
@@ -450,7 +524,7 @@ export function parseAPIError(error: unknown): APIError {
       }
     }
 
-    if (error.message.includes('fetch')) {
+    if (error.message.includes('fetch') || error.message.includes('network')) {
       return {
         message: 'Network error. Please check your connection.',
         code: 'NETWORK_ERROR',
@@ -458,15 +532,35 @@ export function parseAPIError(error: unknown): APIError {
       }
     }
 
+    // Return error message, ensuring it's a string
+    const message = error.message && error.message.trim().length > 0
+      ? error.message
+      : 'An unexpected error occurred'
+
     return {
-      message: error.message,
+      message,
       code: 'UNKNOWN_ERROR',
       status: 0,
     }
   }
 
+  // Handle non-Error objects by converting them to string
+  let errorMessage = 'An unknown error occurred'
+  if (error) {
+    if (typeof error === 'string') {
+      errorMessage = error
+    } else if (typeof error === 'object') {
+      const errorObj = error as Record<string, unknown>
+      if (errorObj.message && typeof errorObj.message === 'string') {
+        errorMessage = errorObj.message
+      } else {
+        errorMessage = JSON.stringify(error)
+      }
+    }
+  }
+
   return {
-    message: 'An unknown error occurred',
+    message: errorMessage,
     code: 'UNKNOWN_ERROR',
     status: 0,
   }
