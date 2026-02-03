@@ -38,6 +38,11 @@ Replace inline email input with **verified email login** before accessing standu
 
 **Status**: Plan created ✅, awaiting execution
 
+**Note on Files:**
+- **SESSION_FLOW_REFACTOR_PLAN.md** = Blueprint/roadmap (temporary guide)
+- **SESSION_FLOW.md** = Actual documentation (will be updated using plan)
+- After SESSION_FLOW.md is updated, delete SESSION_FLOW_REFACTOR_PLAN.md
+
 ### 7.A.1 Frontend: Email Verification Components
 
 **EmailVerificationCard.vue**

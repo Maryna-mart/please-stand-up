@@ -1,6 +1,13 @@
 # SESSION_FLOW.md Refactoring Plan (Complete)
 ## Including Logic, UI, and Tests
 
+**⚠️ Important**: This is a **TEMPORARY BLUEPRINT/ROADMAP** for refactoring SESSION_FLOW.md.
+- Use this plan to guide updates to the actual **SESSION_FLOW.md** documentation
+- After completing all updates to SESSION_FLOW.md, **DELETE THIS FILE**
+- Do NOT commit both files long-term
+
+---
+
 ## Current State → New State
 
 ### What We're Changing
