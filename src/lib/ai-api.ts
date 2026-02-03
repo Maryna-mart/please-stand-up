@@ -344,6 +344,97 @@ export async function summarizeTranscript(
 }
 
 /**
+ * Save a transcript to the session backend
+ * @param sessionId - Session ID
+ * @param transcript - Transcript data to save
+ */
+export async function saveTranscript(
+  sessionId: string,
+  transcript: {
+    participantName: string
+    text: string
+    duration?: number
+    language?: string
+  }
+): Promise<void> {
+  if (!sessionId || !transcript) {
+    throw new Error('Session ID and transcript are required')
+  }
+
+  if (!transcript.participantName || !transcript.text) {
+    throw new Error('Transcript must have participantName and text')
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/save-transcript', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId,
+        transcript,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => ({}))) as {
+        error?: string
+        code?: string
+      }
+      throw new Error(error.error || 'Failed to save transcript')
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean
+      error?: { message: string; code: string }
+    }
+
+    if (!data.success) {
+      throw new Error(data.error?.message || 'Failed to save transcript')
+    }
+  } catch (error) {
+    console.error('[ai-api] saveTranscript failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Get transcripts from session
+ * @param sessionId - Session ID
+ * @returns Array of transcripts from the session
+ */
+export async function getSessionTranscripts(
+  sessionId: string
+): Promise<Transcript[]> {
+  if (!sessionId) {
+    throw new Error('Session ID is required')
+  }
+
+  try {
+    const response = await fetch(
+      `/.netlify/functions/get-session?sessionId=${sessionId}`
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch session data')
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean
+      session?: {
+        transcripts?: Transcript[]
+      }
+    }
+
+    return data.session?.transcripts || []
+  } catch (error) {
+    console.error('[ai-api] getSessionTranscripts failed:', error)
+    return [] // Return empty array on error
+  }
+}
+
+/**
  * Parse API error response
  * @param error - Error object
  * @returns Formatted API error

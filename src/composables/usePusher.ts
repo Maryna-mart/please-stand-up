@@ -19,6 +19,7 @@ export function usePusher() {
    * @param onTimerStarted - Callback when timer starts
    * @param onTimerStopped - Callback when timer stops
    * @param onStatusChanged - Callback when participant status changes
+   * @param onTranscriptAdded - Callback when transcript is added
    */
   function subscribeToSession(
     channelName: string,
@@ -28,6 +29,15 @@ export function usePusher() {
       onTimerStarted?: (data: Record<string, unknown>) => void
       onTimerStopped?: (data: Record<string, unknown>) => void
       onStatusChanged?: (data: Record<string, unknown>) => void
+      onTranscriptAdded?: (data: {
+        transcript: {
+          participantName: string
+          text: string
+          duration?: number
+          language?: string
+        }
+        timestamp: string
+      }) => void
     } = {}
   ) {
     // Create public channel for the session
@@ -66,6 +76,11 @@ export function usePusher() {
     // Bind to status update events
     if (callbacks.onStatusChanged) {
       sessionChannel.bind('status-changed', callbacks.onStatusChanged)
+    }
+
+    // Bind to transcript added events
+    if (callbacks.onTranscriptAdded) {
+      sessionChannel.bind('transcript-added', callbacks.onTranscriptAdded)
     }
   }
 

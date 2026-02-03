@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable no-undef */
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'
@@ -102,6 +103,8 @@ import {
   finishSession as finishSessionAPI,
   summarizeTranscript,
   parseAPIError,
+  saveTranscript,
+  getSessionTranscripts,
 } from '../lib/ai-api'
 import { parseSummary } from '../lib/summary-parser'
 import type { LanguageCode } from '../lib/portkey-types'
@@ -120,6 +123,7 @@ interface Transcript {
   participantName?: string
   text: string
   duration?: number
+  language?: LanguageCode
 }
 
 const route = useRoute()
@@ -185,6 +189,43 @@ const handleStatusChanged = (data: Record<string, unknown>) => {
   }
 }
 
+const handleTranscriptAdded = (data: {
+  transcript: {
+    participantName: string
+    text: string
+    duration?: number
+    language?: string
+  }
+  timestamp: string
+}) => {
+  console.log('[Session] Received transcript-added event', data)
+
+  // Don't add if it's from current participant (they already have it locally)
+  if (data.transcript.participantName === (userName.value || 'Anonymous')) {
+    return
+  }
+
+  // Add to transcripts if not already present
+  const exists = transcripts.value.some(
+    t =>
+      t.participantName === data.transcript.participantName &&
+      t.text === data.transcript.text
+  )
+
+  if (!exists) {
+    transcripts.value.push({
+      participantName: data.transcript.participantName,
+      text: data.transcript.text,
+      duration: data.transcript.duration,
+      language: data.transcript.language as LanguageCode | undefined,
+    })
+    console.log(
+      '[Session] Added transcript from',
+      data.transcript.participantName
+    )
+  }
+}
+
 const onTalkStarted = () => {
   // Broadcast timer started event
 }
@@ -197,7 +238,11 @@ const onTalkEnded = () => {
   // Talk ended event handler
 }
 
-const onTranscriptReady = async (data: { text: string; language: string }) => {
+const onTranscriptReady = async (data: {
+  text: string
+  language: string
+  duration?: number
+}) => {
   isSummarizingInProgress.value = true
 
   try {
@@ -215,13 +260,40 @@ const onTranscriptReady = async (data: { text: string; language: string }) => {
     transcripts.value.push({
       participantName: userName.value || 'Anonymous',
       text: formattedText,
+      duration: data.duration,
+      language: data.language as LanguageCode,
     })
+
+    // Save to backend (persists in Redis + broadcasts via Pusher)
+    await saveTranscript(sessionId.value, {
+      participantName: userName.value || 'Anonymous',
+      text: formattedText,
+      duration: data.duration,
+      language: data.language,
+    })
+
+    console.log('[Session] Transcript saved and broadcast')
   } catch {
     // If summarization fails, fall back to raw text
     transcripts.value.push({
       participantName: userName.value || 'Anonymous',
       text: data.text,
+      duration: data.duration,
+      language: data.language as LanguageCode,
     })
+
+    // Still try to save even if summarization failed
+    try {
+      await saveTranscript(sessionId.value, {
+        participantName: userName.value || 'Anonymous',
+        text: data.text,
+        duration: data.duration,
+        language: data.language,
+      })
+    } catch (saveError) {
+      console.error('[Session] Failed to save transcript:', saveError)
+      // Keep transcript in local state even if save fails
+    }
   } finally {
     isSummarizingInProgress.value = false
   }
@@ -315,7 +387,7 @@ const leaveSession = async () => {
 }
 
 // Subscribe to Pusher channel on mount
-onMounted(() => {
+onMounted(async () => {
   // Initialize participants from session data
   if (sessionData.value?.participants) {
     participants.value = sessionData.value.participants.map(p => ({
@@ -326,12 +398,41 @@ onMounted(() => {
     }))
   }
 
+  // Load existing transcripts from session
+  try {
+    const existingTranscripts = await getSessionTranscripts(sessionId.value)
+    if (existingTranscripts.length > 0) {
+      transcripts.value = existingTranscripts.map(
+        (t: {
+          participantName: string
+          text: string
+          duration?: number
+          language?: string
+        }) => ({
+          participantName: t.participantName,
+          text: t.text,
+          duration: t.duration,
+          language: t.language as LanguageCode | undefined,
+        })
+      )
+      console.log(
+        '[Session] Loaded',
+        existingTranscripts.length,
+        'existing transcripts'
+      )
+    }
+  } catch (error) {
+    console.error('[Session] Failed to load transcripts:', error)
+    // Non-critical - continue with empty transcripts
+  }
+
   subscribeToSession(sessionId.value, {
     onUserJoined: handleUserJoined,
     onUserLeft: handleUserLeft,
     onTimerStarted: handleTimerStarted,
     onTimerStopped: handleTimerStopped,
     onStatusChanged: handleStatusChanged,
+    onTranscriptAdded: handleTranscriptAdded,
   })
 })
 

@@ -4,6 +4,8 @@
  * Uses Upstash Redis for persistent storage across function invocations
  */
 
+import type { Transcript } from '../../../src/lib/portkey-types'
+
 interface SessionData {
   id: string
   leaderName: string
@@ -14,6 +16,7 @@ interface SessionData {
     name: string
     encryptedEmail?: string
   }>
+  transcripts?: Transcript[]
   summary?: string
   finishedAt?: number
   createdAt: number

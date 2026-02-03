@@ -7,6 +7,7 @@
 import { Handler } from '@netlify/functions'
 import { isValidSessionId } from './lib/validation'
 import { getSession } from './lib/redis-client'
+import type { Transcript } from '../../src/lib/portkey-types'
 
 interface GetSessionResponse {
   id: string
@@ -15,6 +16,7 @@ interface GetSessionResponse {
     id: string
     name: string
   }>
+  transcripts?: Transcript[]
   createdAt: number
   passwordRequired: boolean
 }
@@ -76,6 +78,7 @@ const handler: Handler = async event => {
       id: session.id,
       leaderName: session.leaderName,
       participants: session.participants,
+      transcripts: session.transcripts || [],
       createdAt: session.createdAt,
       passwordRequired: !!session.passwordHash,
     }
