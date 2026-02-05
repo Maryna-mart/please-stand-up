@@ -142,6 +142,11 @@ export const validateEmail = (email: string): boolean => {
 
   const trimmed = email.trim()
 
+  // Reject if contains consecutive dots
+  if (trimmed.includes('..')) {
+    return false
+  }
+
   // Basic email regex: local-part@domain.extension
   // Allows: alphanumeric, dots, hyphens, underscores, plus signs
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -159,14 +164,21 @@ export const validateEmailList = (emails: string): boolean => {
     return false
   }
 
-  const emailList = emails
-    .split(',')
-    .map(e => e.trim())
-    .filter(e => e.length > 0)
+  const trimmed = emails.trim()
 
-  if (emailList.length === 0) {
+  // Reject if starts or ends with comma (after trimming whitespace)
+  if (trimmed.startsWith(',') || trimmed.endsWith(',')) {
     return false
   }
 
-  return emailList.every(email => validateEmail(email))
+  // Split by comma and check for empty entries (which indicate double commas, etc)
+  const emailList = trimmed.split(',')
+
+  // Check for double commas or other invalid patterns
+  if (emailList.some(e => e.trim().length === 0)) {
+    return false
+  }
+
+  // Validate each email
+  return emailList.every(email => validateEmail(email.trim()))
 }

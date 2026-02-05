@@ -128,6 +128,8 @@ describe('CreateSessionCard', () => {
 
       const nameInput = wrapper.find('input[id="leaderName"]')
       await nameInput.setValue('John')
+      const emailInput = wrapper.find('input[id="createEmail"]')
+      await emailInput.setValue('john@example.com')
       await wrapper.vm.$nextTick()
 
       const button = wrapper.find('button[type="submit"]')
@@ -183,6 +185,8 @@ describe('CreateSessionCard', () => {
 
       const nameInput = wrapper.find('input[id="leaderName"]')
       await nameInput.setValue('John')
+      const emailInput = wrapper.find('input[id="createEmail"]')
+      await emailInput.setValue('john@example.com')
       await wrapper.vm.$nextTick()
 
       const button = wrapper.find('button[type="submit"]')
@@ -225,6 +229,8 @@ describe('CreateSessionCard', () => {
 
       const nameInput = wrapper.find('input[id="leaderName"]')
       await nameInput.setValue('John')
+      const emailInput = wrapper.find('input[id="createEmail"]')
+      await emailInput.setValue('john@example.com')
       await wrapper.vm.$nextTick()
 
       const button = wrapper.find('button[type="submit"]')
@@ -321,6 +327,8 @@ describe('CreateSessionCard', () => {
 
       const nameInput = wrapper.find('input[id="leaderName"]')
       await nameInput.setValue('  John  ')
+      const emailInput = wrapper.find('input[id="createEmail"]')
+      await emailInput.setValue('john@example.com')
       await wrapper.vm.$nextTick()
 
       const button = wrapper.find('button[type="submit"]')
