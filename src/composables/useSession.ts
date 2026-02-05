@@ -21,6 +21,7 @@ import {
 const STORAGE_KEY = 'standup_session'
 const USER_ID_KEY = 'standup_user_id'
 const USER_NAME_KEY = 'standup_user_name'
+const EMAIL_VERIFICATION_TOKEN_KEY = 'standup_email_token'
 
 // Reactive session state
 const currentSession = ref<Session | null>(null)
@@ -243,6 +244,42 @@ export const addSummary = (summary: string): void => {
 }
 
 /**
+ * Store email verification token in localStorage
+ * @param token - JWT token from email verification
+ */
+export const setEmailVerificationToken = (token: string): void => {
+  try {
+    localStorage.setItem(EMAIL_VERIFICATION_TOKEN_KEY, token)
+  } catch (error) {
+    console.error('Failed to save email verification token:', error)
+  }
+}
+
+/**
+ * Get email verification token from localStorage
+ * @returns Token if found and valid, null otherwise
+ */
+export const getEmailVerificationToken = (): string | null => {
+  try {
+    return localStorage.getItem(EMAIL_VERIFICATION_TOKEN_KEY)
+  } catch (error) {
+    console.error('Failed to get email verification token:', error)
+    return null
+  }
+}
+
+/**
+ * Clear email verification token from localStorage
+ */
+export const clearEmailVerificationToken = (): void => {
+  try {
+    localStorage.removeItem(EMAIL_VERIFICATION_TOKEN_KEY)
+  } catch (error) {
+    console.error('Failed to clear email verification token:', error)
+  }
+}
+
+/**
  * Load session from localStorage cache
  * Used on app startup to restore previous session
  * @returns Cached session or null if not found/invalid
@@ -327,6 +364,9 @@ export const useSession = () => {
     addTranscript,
     addSummary,
     initializeSessionFromCache,
+    setEmailVerificationToken,
+    getEmailVerificationToken,
+    clearEmailVerificationToken,
   }
 }
 

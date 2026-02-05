@@ -356,3 +356,140 @@ export async function sendSummaryEmails(
 
   return results
 }
+
+/**
+ * Send email verification code
+ * @param recipientEmail - Email address to send verification code to
+ * @param code - 6-digit verification code
+ * @returns Send status
+ */
+export async function sendVerificationCodeEmail(
+  recipientEmail: string,
+  code: string
+): Promise<SendGridResponse> {
+  validateConfig()
+
+  const apiKey = process.env.SENDGRID_API_KEY
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL
+  const fromName = process.env.SENDGRID_FROM_NAME || 'Please Stand Up'
+
+  if (!apiKey || !fromEmail) {
+    return {
+      statusCode: 502,
+      success: false,
+      error: 'SendGrid not configured',
+    }
+  }
+
+  try {
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #1f2937; color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .code-box { background-color: #f3f4f6; border: 2px solid #3b82f6; border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0; }
+    .code { font-size: 36px; font-weight: bold; letter-spacing: 4px; color: #1f2937; font-family: monospace; }
+    .expiry { color: #ef4444; font-weight: bold; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Email Verification</h1>
+    </div>
+
+    <div>
+      <p>Your verification code is:</p>
+      <div class="code-box">
+        <div class="code">${code}</div>
+      </div>
+
+      <p>This code <span class="expiry">expires in 5 minutes</span>.</p>
+
+      <p>If you didn't request this code, please ignore this email.</p>
+    </div>
+
+    <div class="footer">
+      <p>${escapeHtml(fromName)}</p>
+    </div>
+  </div>
+</body>
+</html>
+    `
+
+    console.log('[SendGrid] Sending verification code email', {
+      to: recipientEmail,
+    })
+
+    const request: SendGridRequest = {
+      personalizations: [
+        {
+          to: [{ email: recipientEmail }],
+          subject: 'Your Verification Code',
+        },
+      ],
+      from: {
+        email: fromEmail,
+        name: fromName,
+      },
+      content: [
+        {
+          type: 'text/html',
+          value: htmlContent,
+        },
+      ],
+    }
+
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+
+    if (response.ok) {
+      console.log('[SendGrid] Verification email sent successfully', {
+        to: recipientEmail,
+        statusCode: response.status,
+      })
+
+      return {
+        statusCode: response.status,
+        success: true,
+      }
+    } else {
+      const errorText = await response.text()
+      console.error('[SendGrid] Failed to send verification email', {
+        statusCode: response.status,
+        error: errorText,
+      })
+
+      return {
+        statusCode: response.status,
+        success: false,
+        error: `SendGrid API error: ${response.statusText}`,
+      }
+    }
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error'
+    console.error('[SendGrid] Error sending verification email:', {
+      error: errorMessage,
+      recipientEmail,
+    })
+
+    return {
+      statusCode: 500,
+      success: false,
+      error: errorMessage,
+    }
+  }
+}

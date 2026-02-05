@@ -257,3 +257,118 @@ export async function isRedisHealthy(): Promise<boolean> {
     return false
   }
 }
+
+/**
+ * Get verification code key for Redis storage
+ * @param hashedCode - Hashed verification code
+ * @returns Redis key for the verification code
+ */
+export function getVerificationCodeKey(hashedCode: string): string {
+  return `verification:${hashedCode}`
+}
+
+/**
+ * Store a verification code in Redis
+ * @param key - Redis key from getVerificationCodeKey
+ * @param data - Verification code data
+ * @returns true if successful
+ */
+export async function setVerificationCode(
+  key: string,
+  data: { email: string; createdAt: number; attempts: number }
+): Promise<boolean> {
+  try {
+    const TTL_SECONDS = 5 * 60 // 5 minutes
+    await redisRequest<string>([
+      'SET',
+      key,
+      JSON.stringify(data),
+      'EX',
+      TTL_SECONDS.toString(),
+    ])
+    return true
+  } catch (error) {
+    console.error('[Redis] Error setting verification code:', error)
+    return false
+  }
+}
+
+/**
+ * Get a verification code from Redis
+ * @param key - Redis key from getVerificationCodeKey
+ * @returns Verification code data or null if not found or expired
+ */
+export async function getVerificationCode(
+  key: string
+): Promise<{ email: string; createdAt: number; attempts: number } | null> {
+  try {
+    const result = await redisRequest<string | null>(['GET', key])
+
+    if (!result) {
+      return null
+    }
+
+    return JSON.parse(result) as {
+      email: string
+      createdAt: number
+      attempts: number
+    }
+  } catch (error) {
+    console.error('[Redis] Error getting verification code:', error)
+    return null
+  }
+}
+
+/**
+ * Delete a verification code from Redis (single-use)
+ * @param key - Redis key from getVerificationCodeKey
+ * @returns true if deleted
+ */
+export async function deleteVerificationCode(key: string): Promise<boolean> {
+  try {
+    const result = await redisRequest<number>(['DEL', key])
+    return result > 0
+  } catch (error) {
+    console.error('[Redis] Error deleting verification code:', error)
+    return false
+  }
+}
+
+/**
+ * Get verification attempt count for an email
+ * @param key - Redis key (e.g., `email:verification:count:${email}`)
+ * @returns Number of attempts or 0 if not found
+ */
+export async function getVerificationAttempts(key: string): Promise<number> {
+  try {
+    const result = await redisRequest<number | null>(['GET', key])
+    return result || 0
+  } catch (error) {
+    console.error('[Redis] Error getting verification attempts:', error)
+    return 0
+  }
+}
+
+/**
+ * Increment verification attempt counter for an email
+ * @param key - Redis key (e.g., `email:verification:count:${email}`)
+ * @returns New count value
+ */
+export async function incrementVerificationAttempts(
+  key: string
+): Promise<number> {
+  try {
+    const TTL_SECONDS = 60 * 60 // 1 hour
+    const result = await redisRequest<number>(['INCR', key])
+
+    // Set TTL only if this is the first increment
+    if (result === 1) {
+      await redisRequest<string>(['EXPIRE', key, TTL_SECONDS.toString()])
+    }
+
+    return result
+  } catch (error) {
+    console.error('[Redis] Error incrementing verification attempts:', error)
+    return 0
+  }
+}

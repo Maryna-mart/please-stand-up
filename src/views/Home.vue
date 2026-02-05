@@ -16,13 +16,29 @@
 
       <!-- Main Content - Show one card at a time -->
       <div class="mb-8">
+        <!-- Email Verification Flow -->
+        <EmailVerificationCard
+          v-if="!isEmailVerified"
+          @success="handleEmailVerificationSuccess"
+          @error="handleError"
+        />
+        <VerificationCodeCard
+          v-else-if="!codeVerified && emailForVerification"
+          :email="emailForVerification"
+          :expires-at="codeExpiresAt"
+          @verified="handleCodeVerified"
+          @back="handleBackToEmailVerification"
+          @error="handleError"
+        />
+
+        <!-- Create/Join Session (after email verification) -->
         <CreateSessionCard
-          v-if="!hasSessionId"
+          v-else-if="!hasSessionId"
           ref="createCardRef"
           @error="handleError"
         />
         <JoinSessionCard
-          v-else
+          v-else-if="hasSessionId"
           ref="joinCardRef"
           :initial-session-id="sessionId"
           @error="handleError"
@@ -30,12 +46,7 @@
       </div>
 
       <!-- Error Alert -->
-      <div
-        v-if="errorMessage"
-        class="mt-8 bg-red-50 border border-red-200 rounded-lg p-4"
-      >
-        <p class="text-red-800">{{ errorMessage }}</p>
-      </div>
+      <Alert v-if="errorMessage" :message="errorMessage" variant="error" />
 
       <!-- Privacy Notice -->
       <div class="mt-12 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -66,11 +77,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  setEmailVerificationToken,
+  getEmailVerificationToken,
+} from '../composables/useSession'
 import CreateSessionCard from '../components/CreateSessionCard.vue'
 import JoinSessionCard from '../components/JoinSessionCard.vue'
+import EmailVerificationCard from '../components/EmailVerificationCard.vue'
+import VerificationCodeCard from '../components/VerificationCodeCard.vue'
+import Alert from '../components/Alert.vue'
 
 const route = useRoute()
+
 const errorMessage = ref('')
+const isEmailVerified = ref(false)
+const codeVerified = ref(false)
+const emailForVerification = ref('')
+const codeExpiresAt = ref(0)
 
 const sessionId = computed(() => (route.query.sessionId as string) || '')
 const hasSessionId = computed(() => !!sessionId.value)
@@ -78,7 +101,34 @@ const hasSessionId = computed(() => !!sessionId.value)
 onMounted(() => {
   // Clear error message on mount
   errorMessage.value = ''
+
+  // Check if user already has a valid email verification token
+  const existingToken = getEmailVerificationToken()
+  if (existingToken) {
+    isEmailVerified.value = true
+    codeVerified.value = true
+  }
 })
+
+const handleEmailVerificationSuccess = (email: string) => {
+  emailForVerification.value = email
+  codeExpiresAt.value = Date.now() + 5 * 60 * 1000 // 5 minutes from now
+  // Next step: show code verification card
+}
+
+const handleCodeVerified = (token: string) => {
+  // Store the email verification token
+  setEmailVerificationToken(token)
+  codeVerified.value = true
+  isEmailVerified.value = true
+  errorMessage.value = ''
+  // User can now create/join sessions
+}
+
+const handleBackToEmailVerification = () => {
+  emailForVerification.value = ''
+  codeExpiresAt.value = 0
+}
 
 const handleError = (message: string) => {
   errorMessage.value = message
