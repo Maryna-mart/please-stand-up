@@ -12,15 +12,25 @@
 
 ---
 
+## ✅ Phase 8: E2E Tests (COMPLETED)
+
+- Step 8.1: Recording & Transcription (Record → Transcribe → Summarize) ✅
+  - [recording-transcription.spec.ts](e2e/recording-transcription.spec.ts)
+- Step 8.2: Email Verification (Send code → Verify → JWT token) ✅
+  - [email-verification.spec.ts](e2e/email-verification.spec.ts)
+- Step 8.3: Password-Protected Sessions (Create/Join with password) ✅
+  - [password-protected-sessions.spec.ts](e2e/password-protected-sessions.spec.ts)
+- Step 8.4: Real-time Updates (Pusher events, multi-user) ✅
+  - [real-time-updates.spec.ts](e2e/real-time-updates.spec.ts)
+- Step 8.5: Session Expiration (4-hour TTL, Redis cleanup) ✅
+  - [session-expiration.spec.ts](e2e/session-expiration.spec.ts)
+- Step 8.6: Complete Happy Path (Email → Create → Record → Finish & Logout) ✅
+  - [complete-happy-path.spec.ts](e2e/complete-happy-path.spec.ts)
+
+---
+
 ## ⏳ MVP To-Do
 
-- Phase 8: E2E Tests
-  - Step 8.1: Recording & Transcription (Record → Transcribe → Summarize)
-  - Step 8.2: Email Verification (Send code → Verify → JWT token)
-  - Step 8.3: Password-Protected Sessions (Create/Join with password)
-  - Step 8.4: Real-time Updates (Pusher events, multi-user)
-  - Step 8.5: Session Expiration (4-hour TTL, Redis cleanup)
-  - Step 8.6: Complete Happy Path (Email → Create → Record → Finish & Logout)
 - Phase 9: Fix Disabled ESLint Rules (Session.vue, JoinSessionCard.vue)
 - Phase 10: Consolidate Participant Interface (Remove duplicates)
 - Phase 11: Privacy Banner (audio disclosure/consent before recording)
