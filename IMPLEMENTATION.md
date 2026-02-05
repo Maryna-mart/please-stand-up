@@ -9,12 +9,12 @@
 | 6 | ✅ Complete | AI Integration (Deepgram + Portkey) |
 | 6.7 | ✅ Complete | Real-time Summarization |
 | **7.A** | ✅ **COMPLETE** | **Email Verification Login** |
-| **7.A.Setup** | 🔄 **IN PROGRESS** | **SendGrid Configuration (CURRENT)** |
-| 7 | ⏳ Next | Email Infrastructure (finish-session) |
+| **7.A.Setup** | ✅ **COMPLETE** | **SendGrid Configuration** |
+| **7** | 🔄 **IN PROGRESS** | **Email Infrastructure (CURRENT)** |
 | 8 | ⏳ Next | Privacy Banner |
 | 9+ | 📋 Post-MVP | Transcript sync, Testing, Deployment |
 
-**Current Stats**: 238+ tests passing, comprehensive coverage
+**Current Stats**: 365 tests passing ✅, comprehensive coverage
 
 ---
 
@@ -268,7 +268,7 @@ SESSION_SECRET=your-random-32-char-string
 ## Deployment Checklist
 
 ### Pre-Deployment
-- [ ] All tests passing (238+ tests)
+- [x] All tests passing (365 tests) ✅
 - [ ] No console errors in production build
 - [ ] No secrets in source code
 - [ ] HTTPS enforced
@@ -309,8 +309,10 @@ SESSION_SECRET=your-random-32-char-string
 - Phase 6.7: Real-time Summarization
 
 ⏳ **In Progress**
-- Phase 7.A: Email Verification Login (CURRENT)
-- Phase 7: Email Infrastructure
+- Phase 7: Email Infrastructure (CURRENT)
+
+✅ **Recently Completed**
+- Phase 7.A: Email Verification Login + SendGrid Configuration
 
 📋 **Criteria**
 - >80% test coverage maintained
@@ -361,8 +363,18 @@ Sessions can be optionally protected with passwords using PBKDF2 hashing and tim
 - Unit tests (238+ passing, >80% coverage)
 
 ### ⏳ In Progress
-- Phase 7.A: Email Verification Login (passwordless auth before accessing standup)
 - Phase 7: Email Infrastructure (auto-send summary on session finish)
+  - Wire finish-session endpoint
+  - Test full flow: Record → Summarize → Finish → Email delivery
+
+### ✅ Recently Completed
+- Phase 7.A: Email Verification Login (passwordless auth before accessing standup)
+  - Frontend components (EmailVerificationCard, VerificationCodeCard)
+  - Backend endpoints (send-verification-code, verify-email)
+  - SendGrid integration with proper email templates
+  - JWT token validation
+  - Rate limiting on verification attempts
+  - 365 tests passing with full coverage
 
 ### Architecture Summary
 - **Frontend**: Vue 3 + TypeScript + Vite + Tailwind CSS
