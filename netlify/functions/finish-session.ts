@@ -10,6 +10,7 @@ import { isValidSessionId } from './lib/validation'
 import { summarizeTranscripts } from './lib/portkey-server'
 import { sendSummaryEmails, isSendGridConfigured } from './lib/sendgrid-client'
 import { decryptEmail, deserializeEncryptedEmail } from './lib/email-crypto'
+import { parseSummary } from './lib/summary-parser'
 
 interface FinishSessionRequest {
   sessionId: string
@@ -196,12 +197,21 @@ const handler: Handler = async event => {
           }
         }
 
-        // Send emails to all recipients with raw summary
-        // Frontend will handle parsing for display
+        // Parse summary into structured sections for email formatting
+        const parsedSummary = parseSummary(summaryText)
+
+        console.log('[finish-session] Parsed summary into sections', {
+          sessionId,
+          participantCount: parsedSummary.participants.length,
+        })
+
+        // Send emails to all recipients with parsed summary
         if (recipients.length > 0) {
-          const emailResults = await sendSummaryEmails(recipients, sessionId, {
-            participants: [],
-          })
+          const emailResults = await sendSummaryEmails(
+            recipients,
+            sessionId,
+            parsedSummary
+          )
 
           console.log('[finish-session] Email send results', {
             sessionId,
