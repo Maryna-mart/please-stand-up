@@ -13,26 +13,31 @@ This document describes all session lifecycle scenarios and routing logic for th
 - Can generate summary and send email
 - Can see all participants' transcripts
 
-Session access is determined solely by:
-1. **Valid session ID in URL** (from backend perspective)
-2. **Cached session + user ID in localStorage** (from client perspective)
+Session access is determined by:
+1. **Email verification** (required first - passwordless authentication via 6-digit codes sent to email)
+2. **Valid session ID in URL** (from backend perspective)
+3. **Cached session + user ID in localStorage** (from client perspective)
 
 ---
 
 ## Session State Model
 
-Session persistence uses a three-key system:
+Session persistence uses a four-key system:
 
 ```javascript
 localStorage = {
-  'standup_session': {...},      // Full session object
-  'standup_user_id': 'abc123',   // Current user's ID in session
-  'standup_user_name': 'Alice'   // Current user's name
+  'standup_email_token': 'eyJ...',  // JWT token from email verification (30-day expiration)
+  'standup_session': {...},         // Full session object (4-hour TTL)
+  'standup_user_id': 'abc123',      // Current user's ID in session
+  'standup_user_name': 'Alice'      // Current user's name
 }
 ```
 
-- **Backend**: Source of truth (Redis). Validates sessions exist and aren't expired.
-- **localStorage**: Cache. Used to restore user to previous session without re-joining.
+**Key Details:**
+- **Email Token**: JWT generated after email verification. Persists across sessions for 30 days, allowing users to create/join multiple sessions without re-verifying.
+- **Session Object**: Cached from backend. Includes participants, expiration, password requirement flag, summary data.
+- **Backend**: Source of truth (Redis). Sessions have automatic 4-hour TTL - data deleted after 4 hours regardless of user action.
+- **localStorage**: Cache. Used to restore user state without re-authenticating email.
 
 ---
 
@@ -43,34 +48,61 @@ All access to `/session/:id` is protected by this guard:
 ```
 Request: /session/:id
     ↓
-1. Backend validation: Does :id exist and not expired?
+1. Email verification check:
+    ├─ No emailToken in localStorage? → Redirect to / (must verify email)
+    └─ YES → Continue
+    ↓
+2. Backend validation: Does :id exist and not expired?
     ├─ NO → Redirect to / (user can create new)
     ├─ YES (session valid)
     │   ↓
-    │   2. Local cache check: Do I have :id + userId?
-    │       ├─ YES → Allow access (user stays in session)
+    │   3. Local cache check: Do I have :id + userId?
+    │       ├─ YES → Continue
     │       └─ NO → Redirect to / with ?sessionId=:id (user must join)
+    │   ↓
+    │   4. Participant verification: Is userId in participants list?
+    │       ├─ YES → Continue
+    │       └─ NO → Clear cache, redirect to join (prevents spoofing)
+    │   ↓
+    │   5. Password check: Is session password-protected?
+    │       ├─ YES → Redirect to /?sessionId=:id&requirePassword=true (re-enter password on reload)
+    │       └─ NO → Allow access (user stays in session)
 ```
+
+**Implementation Note:** Email token validation happens in Home.vue during email verification flow. Session access is guarded by router checks above. See [src/router/index.ts](src/router/index.ts) for implementation details.
 
 ---
 
 ## Home Page Logic
 
-The Home page (`/`) shows different UI based on URL params:
+The Home page (`/`) shows different UI based on email verification and URL params:
 
 ```
 Route: /
-├─ Has ?sessionId param?
-│  ├─ YES → Show JoinSessionCard (sessionId pre-filled from query)
-│  └─ NO → Show CreateSessionCard
-│
-└─ (Optional: Show ContinueSessionCard if user has cached session)
+├─ Has emailToken in localStorage?
+│  ├─ NO → Show EmailVerificationCard (Step 1: verify email)
+│  │   └─ On success → Get JWT token, store in localStorage
+│  │
+│  └─ YES (email verified) → Continue to session selection
+│      ├─ Has ?sessionId param?
+│      │  ├─ YES → Show JoinSessionCard (sessionId pre-filled from query)
+│      │  └─ NO → Show CreateSessionCard
+│      │
+│      └─ Optional: Show email status bar with verified email + "Use another email" button
 ```
+
+**Email Verification Component** (`EmailVerificationCard.vue` → `VerificationCodeCard.vue`):
+- Step 1: User enters email, clicks "Send Code"
+- Step 2: SendGrid sends 6-digit code to email (5-minute expiration)
+- Step 3: User enters code, clicks "Verify"
+- Step 4: Backend validates code, returns JWT token
+- JWT stored in localStorage (30-day expiration)
 
 **Routing from session room:**
 - Valid session but not in cache → Redirect to `/?sessionId=abc123`
 - Invalid/expired session → Redirect to `/` (no params)
-- Leave session → Navigate to `/` (programmatically, no params)
+- Leave session → Navigate to `/` (programmatically, emailToken persists)
+- Session expired (4 hours) → Redis auto-deletes, user can create new session with same email
 
 ---
 
@@ -79,14 +111,26 @@ Route: /
 ### Flow 1: Create New Session
 
 ```
-Home page (/) with CreateSessionCard
-  User enters name "Alice" → clicks "Create Session"
+Home page (/) - Email verification flow
+  Step 1: User enters email "alice@example.com" → clicks "Send Code"
     ↓
-createSession() API call
-  Backend: Generate sessionId, userId
-  Returns: {sessionId, userId, expiresAt}
+  Backend sends 6-digit code via SendGrid (5-min expiration)
+    ↓
+  Step 2: User enters code "123456" → clicks "Verify"
+    ↓
+  Backend validates code, returns JWT emailToken (30-day expiration)
+    ↓
+  Token stored in localStorage: standup_email_token
+    ↓
+Home page (/) with CreateSessionCard (email verified)
+  User enters name "Alice", optional password → clicks "Create Session"
+    ↓
+createSession() API call (includes emailToken in Authorization header)
+  Backend: Generate sessionId, userId, passwordHash (if provided)
+  Returns: {sessionId, userId, expiresAt, passwordRequired, participants}
     ↓
 Save to localStorage:
+  standup_email_token: 'eyJ...' (persists - 30-day expiration)
   standup_session: {...}
   standup_user_id: '...'
   standup_user_name: 'Alice'
@@ -94,8 +138,11 @@ Save to localStorage:
 Navigate to /session/abc123def
     ↓
 Router guard:
+  ✓ emailToken exists? YES
   ✓ Backend: Has abc123def? YES
   ✓ Cache: Have session + userId? YES
+  ✓ Participant: userId in participants? YES
+  ✓ Password: Protected? NO
     ↓
 Show session room
 ```
@@ -111,20 +158,31 @@ Receive link: https://app.com/session/abc123def
 Browser: Navigate to /session/abc123def
     ↓
 Router guard:
+  ✗ emailToken in localStorage? NO → Redirect to /
+    ↓
+Home page (/): Email verification needed
+  Step 1: User enters email "bob@example.com" → clicks "Send Code"
+  Step 2: User enters code from email → clicks "Verify"
+  Step 3: JWT emailToken stored in localStorage
+    ↓
+Router guard re-checks:
+  ✓ emailToken exists? YES
   ✓ Backend: Has abc123def? YES
   ✗ Cache: Empty
     ↓
-Redirect: / with ?sessionId=abc123def
+Redirect: /?sessionId=abc123def
     ↓
 Home page: Shows JoinSessionCard
   (sessionId='abc123def' pre-filled from query param)
-  User enters name "Bob"
+  Email already verified - show status bar with email
+  User enters name "Bob", password if required
     ↓
-joinSession() API call
-  Backend: Add Bob to session, generate userId
-  Returns: {sessionId, userId, participants, ...}
+joinSession() API call (includes emailToken in Authorization header)
+  Backend: Verify password (if required), add Bob to session, generate userId
+  Returns: {sessionId, userId, participants, passwordRequired, ...}
     ↓
 Save to localStorage:
+  standup_email_token: 'eyJ...' (persists)
   standup_session: {...}
   standup_user_id: '...'
   standup_user_name: 'Bob'
@@ -132,8 +190,11 @@ Save to localStorage:
 Navigate to /session/abc123def
     ↓
 Router guard:
+  ✓ emailToken exists? YES
   ✓ Backend: Has abc123def? YES
   ✓ Cache: Have session + userId? YES
+  ✓ Participant: userId in participants? YES
+  ✓ Password: Protected? NO (or was verified)
     ↓
 Show session room
 ```
@@ -357,44 +418,66 @@ Show: /session/xyz789
 ## localStorage Persistence
 
 ### When Saved
-- ✅ After `createSession()` → All three keys
-- ✅ After `joinSession()` → All three keys
+- ✅ After `verifyEmail()` → emailToken (JWT stored, 30-day expiration)
+- ✅ After `createSession()` → All four keys (emailToken + session data)
+- ✅ After `joinSession()` → All four keys (emailToken + session data)
 - ✅ After `updateParticipantStatus()` → Session only
 - ✅ After `addTranscript()` → Session only
 - ✅ After `addSummary()` → Session only
 
 ### When Cleared
-- ✅ After `leaveSession()` → All three keys
-- ✅ On expiration check → All three keys
-- ✅ When entering different sessionId → Overwrites all
+- ✅ After `leaveSession()` → Session data only (emailToken persists for 30 days)
+- ✅ On expiration check → Session data only if expired
+- ✅ When entering different sessionId → Overwrites session data (emailToken persists)
+- ✅ On email re-verification → Replaces emailToken (starts new 30-day timer)
+
+### Automatic Cleanup (Server-Side)
+- Redis automatically deletes session data after **4 hours** (14400 seconds)
+- Verification codes expire after **5 minutes** (300 seconds)
+- Rate limit counters expire after **1 hour** (3600 seconds)
+- Email token JWT expires after **30 days** (can be regenerated by reverifying email)
 
 ### Restoration
 - ✅ On app mount → `initializeSessionFromCache()`
-- ✅ Loads all three keys
-- ✅ Validates expiration
+- ✅ Checks emailToken first (required for any session access)
+- ✅ Validates emailToken expiration (not expired?)
+- ✅ Loads session cache if valid
 - ✅ Restores to reactive state
 
 ---
 
 ## Session Validation Rules
 
+### Email Token Validation
+**Frontend** (`src/views/Home.vue`):
+- ✓ Check emailToken exists in localStorage before showing session cards
+- ✓ Verify JWT structure (three dot-separated parts: header.payload.signature)
+- ✓ Decode payload to extract email (for display in status bar)
+
+**Backend** (`netlify/functions/*`):
+- ✓ Extract emailToken from Authorization header (`Bearer <token>`)
+- ✓ Verify JWT signature (using SESSION_SECRET)
+- ✓ Check expiration (30 days from issuance)
+- ✓ Return 401 if invalid/expired
+
 ### Backend (`/netlify/functions/get-session/:id`)
 - ✓ Session ID exists in Redis
-- ✓ Session not expired (expiresAt > now)
-- ✓ Returns session object
+- ✓ Session not expired (automatic deletion after 4 hours)
+- ✓ Returns session object with participants, passwordRequired flag
 
-### Client-Side
+### Client-Side Session Validation
 - ✓ Session ID format (base64url, 40+ chars)
 - ✓ Participant structure valid
 - ✓ Date fields valid
-- ✓ Not expired: expiresAt < now
+- ✓ Expiration check (not expired locally)
 
-### Router Guard
-- ✓ Always check backend first
-- ✓ Then check local cache
-- ✓ **Verify userId is in participants list** ← NEW (prevents localStorage spoofing)
-- ✓ **For password-protected sessions, redirect to password re-entry** ← NEW
-- ✓ Redirect if any validation fails
+### Router Guard (See [src/router/index.ts](src/router/index.ts))
+1. ✓ Check emailToken exists in localStorage
+2. ✓ Check backend for session existence
+3. ✓ Check local cache for session + userId
+4. ✓ **Verify userId is in participants list** (prevents localStorage spoofing)
+5. ✓ **For password-protected sessions, redirect to password re-entry on reload** (re-verify password)
+6. ✓ Redirect if any validation fails
 
 ---
 
@@ -554,56 +637,5 @@ Result: User joins successfully ✓
 - Wrong password → 401 error with "Incorrect password" message
 - All errors caught and converted to user-friendly messages
 
-### Testing
 
-Password protection is fully tested in:
-- [src/__tests__/unit/useSession.test.ts:200-286](src/__tests__/unit/useSession.test.ts#L200-L286)
-  - ✓ Create session with password
-  - ✓ Join with correct password
-  - ✓ Reject wrong password
-  - ✓ Require password for protected session
-- [src/__tests__/unit/password-utils.test.ts](src/__tests__/unit/password-utils.test.ts)
-  - ✓ Password validation strength
-  - ✓ PBKDF2 hashing
-  - ✓ Timing-safe comparison
 
----
-
-## Testing Coverage
-
-### Unit Tests (useSession.test.ts)
-- ✓ Create/join saves all three localStorage keys
-- ✓ Leave clears all three keys
-- ✓ Initialize restores all three keys
-- ✓ Expired sessions removed on load
-- ✓ Invalid data handled gracefully
-
-### Router Tests (router.test.ts)
-- ✓ Allows access when cached
-- ✓ Redirects to join when valid but not cached
-- ✓ Redirects to create when invalid/expired
-- ✓ Preserves ?sessionId query param
-- ✓ Different sessions redirect to join
-
-### E2E Tests (session-persistence.spec.ts)
-- ✓ Create → Reload → Still in session
-- ✓ Join → Reload → Still in session
-- ✓ Leave → Back to home
-- ✓ Invalid link → Back to home
-- ✓ Multiple reloads → Persist
-- ✓ Member stays after reload
-
----
-
-## Implementation Status
-
-- [x] Router guard logic implemented
-- [x] localStorage persistence (all 3 keys)
-- [x] Initialize on app mount
-- [x] Leave clears storage
-- [x] Unit tests written
-- [x] Router tests written
-- [x] E2E tests written
-- [x] Password protection implemented (PBKDF2 hashing, validation)
-- [ ] Multi-tab sync (future)
-- [ ] Session history DB (future)
