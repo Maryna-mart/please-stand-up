@@ -94,7 +94,6 @@
 </template>
 
 <script setup lang="ts">
-/* eslint-disable no-undef */
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useSession } from '../composables/useSession'

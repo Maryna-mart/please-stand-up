@@ -23,8 +23,11 @@ export default [
         MediaRecorder: 'readonly',
         Blob: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         crypto: 'readonly',
         fetch: 'readonly',
+        console: 'readonly',
+        localStorage: 'readonly',
       },
       parserOptions: {
         parser: tseslint.parser,
@@ -53,8 +56,11 @@ export default [
         MediaRecorder: 'readonly',
         Blob: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         crypto: 'readonly',
         fetch: 'readonly',
+        console: 'readonly',
+        localStorage: 'readonly',
       },
       parser: tseslint.parser,
       parserOptions: {
