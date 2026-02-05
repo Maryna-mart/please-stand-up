@@ -274,6 +274,16 @@ SESSION_SECRET=your-random-32-char-string
 - [ ] HTTPS enforced
 - [ ] Rate limiting active
 - [ ] Input validation working
+- [ ] **SendGrid Domain Authentication set up** (see below)
+
+### Email Configuration for Production
+- [ ] Domain registered and pointing to your app
+- [ ] SendGrid domain authentication configured (Settings → Sender Authentication → Authenticate Your Domain)
+- [ ] Add DNS records (CNAME, SPF, DKIM) to your domain registrar
+- [ ] Wait ~30 min for SendGrid to verify DNS records
+- [ ] Update `SENDGRID_FROM_EMAIL` to use your verified domain (e.g., `noreply@yourdomain.com`)
+
+**Note**: During development, single sender email verification works fine. For production, domain authentication is required for better email deliverability and professional appearance.
 
 ### Netlify Setup
 - [ ] Connect GitHub repository
@@ -286,7 +296,7 @@ SESSION_SECRET=your-random-32-char-string
 1. **Pusher**: Create prod app on dashboard.pusher.com
 2. **Portkey**: Create prod API key on app.portkey.ai
 3. **Upstash**: Create prod database on console.upstash.com
-4. **SendGrid**: Same API key works for dev + prod
+4. **SendGrid**: Same API key works for dev + prod (but use domain-authenticated email)
 
 ---
 
