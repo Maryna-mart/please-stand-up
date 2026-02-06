@@ -21,34 +21,31 @@ export function isDevelopmentEmailMockEnabled(): boolean {
 }
 
 /**
- * Generate client-side console logging code to display verification code
- * This creates a special marker in the function response that the frontend can detect
+ * Generate console logging payload to display verification code
+ * Returns email and code as an object instead of JavaScript code
+ * This avoids needing eval() on the frontend
  *
  * @param email - Email address
  * @param code - 6-digit verification code
- * @returns JavaScript code to log the code to browser console
+ * @returns Object with email and code
  */
-export function createConsoleLogPayload(email: string, code: string): string {
-  return `
-console.group('%c🔐 [EMAIL_CODE] Development Mode - Verification Code', 'color: #ff6b6b; font-weight: bold; font-size: 14px;');
-console.log('%cEmail:', 'color: #4c6ef5; font-weight: bold;', '${email}');
-console.log('%cCode:', 'color: #4c6ef5; font-weight: bold;', '${code}');
-console.log('%cThis code is displayed here because ENABLE_DEV_MODE_EMAIL_MOCK is enabled', 'color: #868e96; font-size: 12px;');
-console.log('%cCopy the code above and paste it into the verification field', 'color: #15aabf; font-size: 12px; font-weight: bold;');
-console.groupEnd();
-`
+export function createConsoleLogPayload(
+  email: string,
+  code: string
+): { email: string; code: string } {
+  return { email, code }
 }
 
 /**
  * Send a verification code (mock version for development)
- * In development mode, returns a response that includes console logging instructions
+ * In development mode, returns a response that includes console logging data
  * The code is still stored in Redis for rate limiting and verification
  *
- * Frontend will detect the dev-mode flag and execute console logging code
+ * Frontend will log the email and code to console directly
  *
  * @param email - Email to send to
  * @param code - Verification code
- * @returns Mock response that includes console.log payload
+ * @returns Mock response that includes console logging data
  */
 export async function sendMockVerificationCodeEmail(
   email: string,
@@ -58,7 +55,7 @@ export async function sendMockVerificationCodeEmail(
   success: boolean
   message: string
   devMode: boolean
-  devConsolePayload?: string
+  devConsolePayload?: { email: string; code: string }
 }> {
   if (!isDevelopmentEmailMockEnabled()) {
     return {

@@ -24,7 +24,7 @@ interface SendVerificationCodeRequest {
 interface SendVerificationCodeResponse extends ErrorResponse {
   success?: boolean
   message: string
-  devConsolePayload?: string // For development mode: JavaScript code to log code to console
+  devConsolePayload?: { email: string; code: string } // For development mode: email and code object
 }
 
 // Rate limiting for email verification requests
@@ -126,7 +126,7 @@ const handler: Handler = async event => {
     await incrementVerificationAttempts(emailKey)
 
     // Send email with the code (or mock it for development)
-    let devConsolePayload: string | undefined
+    let devConsolePayload: { email: string; code: string } | undefined
     try {
       const emailResponse = await sendVerificationCodeEmail(email, code)
       // In development mode, extract the console payload

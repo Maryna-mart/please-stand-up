@@ -399,7 +399,7 @@ export async function sendSummaryEmails(
 export async function sendVerificationCodeEmail(
   recipientEmail: string,
   code: string
-): Promise<SendGridResponse & { devConsolePayload?: string }> {
+): Promise<SendGridResponse & { devConsolePayload?: { email: string; code: string } }> {
   validateConfig()
 
   // Use mock email in development mode

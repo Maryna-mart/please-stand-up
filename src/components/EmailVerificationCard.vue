@@ -171,9 +171,14 @@ const handleSubmit = async () => {
       return
     }
 
-    // In development mode, execute the console logging payload to display code
-    if (data.devConsolePayload) {
-      eval(data.devConsolePayload)
+    // In development mode, log the code to console directly (no eval needed)
+    if (data.devConsolePayload && typeof data.devConsolePayload === 'object') {
+      console.group('%c🔐 [EMAIL_CODE] Development Mode - Verification Code', 'color: #ff6b6b; font-weight: bold; font-size: 14px;')
+      console.log('%cEmail:', 'color: #4c6ef5; font-weight: bold;', data.devConsolePayload.email)
+      console.log('%cCode:', 'color: #4c6ef5; font-weight: bold;', data.devConsolePayload.code)
+      console.log('%cThis code is displayed here because ENABLE_DEV_MODE_EMAIL_MOCK is enabled', 'color: #868e96; font-size: 12px;')
+      console.log('%cCopy the code above and paste it into the verification field', 'color: #15aabf; font-size: 12px; font-weight: bold;')
+      console.groupEnd()
     }
 
     codeRequested.value = true

@@ -37,10 +37,38 @@
 
 ---
 
-## ⏳ MVP To-Do
+## ⏳ Phase 10: Email Token Authentication (JWT in Authorization Header)
 
-- Phase 10: Consolidate Participant Interface (Remove duplicates)
-- Phase 11: Privacy Banner (audio disclosure/consent before recording)
+**Status:** Planning
+
+**Goal:** Implement proper JWT authentication for create-session and join-session endpoints. Backend validates emailToken from `Authorization: Bearer <token>` header, extracts verified email from JWT payload.
+
+**Why This Matters:**
+- Email verification is required before creating/joining sessions (security)
+- Currently NOT being validated - no check if user verified their email
+- Frontend has emailToken but doesn't send it to backend
+- Backend accepts email as plain text with no verification
+
+### Implementation Plan: [PHASE_10_JWT_AUTH_PLAN.md](PHASE_10_JWT_AUTH_PLAN.md)
+
+**Tasks:**
+- [ ] Backend: Create JWT validation utility (`netlify/functions/lib/jwt-utils-server.ts`)
+- [ ] Backend: Update `create-session.ts` to validate Authorization header
+- [ ] Backend: Update `join-session.ts` to validate Authorization header
+- [ ] Frontend: Update `session-api.ts` to send Authorization header
+- [ ] Frontend: Update error handling for 401/token expired
+- [ ] Tests: Add JWT utility tests
+- [ ] Tests: Update create-session and join-session tests
+- [ ] Tests: Update E2E test for auth flow
+- [ ] Docs: Update `USER_FLOW_ARCHITECTURE.md` to show Authorization header
+- [ ] Docs: Update `SESSION_FLOW.md` to match architecture
+
+---
+
+## ⏳ MVP To-Do (After Phase 10)
+
+- Phase 11: Consolidate Participant Interface (Remove duplicates)
+- Phase 12: Privacy Banner (audio disclosure/consent before recording)
 
 ---
 

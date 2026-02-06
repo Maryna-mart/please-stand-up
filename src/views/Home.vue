@@ -113,6 +113,7 @@ onMounted(() => {
 const handleEmailVerificationSuccess = (email: string) => {
   emailForVerification.value = email
   codeExpiresAt.value = Date.now() + 5 * 60 * 1000 // 5 minutes from now
+  isEmailVerified.value = true
   // Next step: show code verification card
 }
 
