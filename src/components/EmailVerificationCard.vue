@@ -171,6 +171,11 @@ const handleSubmit = async () => {
       return
     }
 
+    // In development mode, execute the console logging payload to display code
+    if (data.devConsolePayload) {
+      eval(data.devConsolePayload)
+    }
+
     codeRequested.value = true
     codeExpired.value = false
     errorMessage.value = ''

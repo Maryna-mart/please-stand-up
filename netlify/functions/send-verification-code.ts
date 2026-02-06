@@ -24,6 +24,7 @@ interface SendVerificationCodeRequest {
 interface SendVerificationCodeResponse extends ErrorResponse {
   success?: boolean
   message: string
+  devConsolePayload?: string // For development mode: JavaScript code to log code to console
 }
 
 // Rate limiting for email verification requests
@@ -124,9 +125,17 @@ const handler: Handler = async event => {
     // Increment the code request counter for this email
     await incrementVerificationAttempts(emailKey)
 
-    // Send email with the code
+    // Send email with the code (or mock it for development)
+    let devConsolePayload: string | undefined
     try {
-      await sendVerificationCodeEmail(email, code)
+      const emailResponse = await sendVerificationCodeEmail(email, code)
+      // In development mode, extract the console payload
+      if (
+        'devConsolePayload' in emailResponse &&
+        emailResponse.devConsolePayload
+      ) {
+        devConsolePayload = emailResponse.devConsolePayload
+      }
     } catch (emailError) {
       console.error('[send-verification-code] Email send error:', emailError)
       // Still return success to prevent email enumeration
@@ -134,12 +143,19 @@ const handler: Handler = async event => {
     }
 
     // Always return generic success message (prevent email enumeration)
+    const response: SendVerificationCodeResponse = {
+      success: true,
+      message: GENERIC_SUCCESS_MESSAGE,
+    }
+
+    // Include console payload in development mode
+    if (devConsolePayload) {
+      response.devConsolePayload = devConsolePayload
+    }
+
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        message: GENERIC_SUCCESS_MESSAGE,
-      } as SendVerificationCodeResponse),
+      body: JSON.stringify(response),
     }
   } catch (error) {
     console.error('[send-verification-code] Error:', error)

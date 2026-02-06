@@ -1,7 +1,27 @@
 /**
  * SendGrid Email Client
  * Handles sending standup summary emails to participants
+ *
+ * Development Mode:
+ * When ENABLE_DEV_MODE_EMAIL_MOCK is set to "true", this client uses mock email
+ * instead of SendGrid. Verification codes are logged to browser console.
+ * To use mock mode:
+ *   1. Set ENABLE_DEV_MODE_EMAIL_MOCK=true in .env
+ *   2. Request verification code normally
+ *   3. Check browser console for code
+ *   4. Use code to verify email
+ *
+ * To switch back to real email:
+ *   1. Set ENABLE_DEV_MODE_EMAIL_MOCK=false
+ *   2. Set SENDGRID_API_KEY with a real API key
+ *   3. Set SENDGRID_FROM_EMAIL with a verified sender email
  */
+
+import {
+  isDevelopmentEmailMockEnabled,
+  sendMockVerificationCodeEmail,
+  sendMockSummaryEmail,
+} from './email-mock-client'
 
 interface EmailAddress {
   email: string
@@ -171,6 +191,19 @@ export async function sendSummaryEmail(
   }
 ): Promise<SendGridResponse> {
   validateConfig()
+
+  // Use mock email in development mode
+  if (isDevelopmentEmailMockEnabled()) {
+    await sendMockSummaryEmail(recipientEmail, {
+      recipientName,
+      sessionId,
+      summary,
+    })
+    return {
+      statusCode: 200,
+      success: true,
+    }
+  }
 
   const apiKey = process.env.SENDGRID_API_KEY
   const fromEmail = process.env.SENDGRID_FROM_EMAIL
@@ -361,13 +394,18 @@ export async function sendSummaryEmails(
  * Send email verification code
  * @param recipientEmail - Email address to send verification code to
  * @param code - 6-digit verification code
- * @returns Send status
+ * @returns Send status (includes devConsolePayload in dev mock mode)
  */
 export async function sendVerificationCodeEmail(
   recipientEmail: string,
   code: string
-): Promise<SendGridResponse> {
+): Promise<SendGridResponse & { devConsolePayload?: string }> {
   validateConfig()
+
+  // Use mock email in development mode
+  if (isDevelopmentEmailMockEnabled()) {
+    return await sendMockVerificationCodeEmail(recipientEmail, code)
+  }
 
   const apiKey = process.env.SENDGRID_API_KEY
   const fromEmail = process.env.SENDGRID_FROM_EMAIL

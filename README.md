@@ -55,6 +55,9 @@ npm run format
 npm run format:check
 ```
 
+**Email Setup for Development:**
+By default, email verification codes appear in your browser console during development. See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for details on switching to real email delivery.
+
 ### Testing
 
 ```bash
@@ -123,8 +126,13 @@ DEEPGRAM_API_KEY=your_deepgram_key
 # Portkey (Claude AI for summarization) - Get from https://portkey.ai
 PORTKEY_API_KEY=your_portkey_key
 
-# SendGrid (email delivery) - Get from https://sendgrid.com
-SENDGRID_API_KEY=your_sendgrid_key
+# SendGrid (email delivery) - Optional in development, required for production
+# By default, development mode shows codes in browser console (ENABLE_DEV_MODE_EMAIL_MOCK=true)
+# For production, set ENABLE_DEV_MODE_EMAIL_MOCK=false and add real credentials
+# Get from https://sendgrid.com
+# SENDGRID_API_KEY=your_sendgrid_key
+# SENDGRID_FROM_EMAIL=your-verified-email@example.com
+# SENDGRID_FROM_NAME=Your Display Name
 
 # Session security (generate random string)
 SESSION_SECRET=your_random_32_char_secret
